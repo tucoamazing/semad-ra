@@ -24,10 +24,10 @@
 <link rel="apple-touch-icon" href="assets/icone-180.png">
 <link rel="preload" href="assets/fonts/inter-tight-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/instrument-serif-latin-400-italic.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/ra.css?v=a39c3739">
+<link rel="stylesheet" href="assets/ra.css?v=48a5b540">
 <script type="module" src="assets/model-viewer.min.js?v=4.3.1" integrity="sha384-cprcVQt7wbUl0xngF3PGP6yBB7n4/t+4AoAMG9biiMCGFiWOdzUH10Ie2COTqFNW" crossorigin="anonymous"></script>
-<script type="module" src="assets/ra.js?v=8b80f8fc"></script>
-<noscript><style>.ra-cta,.ra-noar,.ra-stage__tools,.ra-vida3d__ar,.ra-size{display:none!important}.ra-desk{display:grid!important}</style></noscript>
+<script type="module" src="assets/ra.js?v=2e8eaf8b"></script>
+<noscript><style>.ra-cta,.ra-noar,.ra-fotocta,.ra-ouvir,.ra-stage__tools,.ra-vida3d__ar,.ra-size{display:none!important}.ra-desk{display:grid!important}</style></noscript>
 </head>
 <body class="ra ra--item ra--vida ra--vida" data-ar="checking">
 <a class="ra-skip" href="#conteudo">Pular para o conteúdo</a>
@@ -42,11 +42,14 @@
     <h1 id="titulo" class="ra-title">VIDA <span class="ra-title__sub">no seu espaço</span></h1>
     <p class="ra-chamada">A guia da Expedição Parques GO veio fazer um convite: conhecer de perto os parques estaduais de Goiás. Chame a VIDA para perto de você.</p>
     <p class="ra-size" data-size hidden><span class="ra-size__k">Tamanho na RA<span class="ra-sr">:</span></span> <span data-size-v></span></p>
+    <p class="ra-ouvir"><button type="button" class="ra-chip ra-chip--fala" data-fala-play data-fala-scroll><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.6 7.6 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Ouvir a VIDA se apresentar</span></button></p>
     
     <div class="ra-cta">
       <button type="button" class="ra-ar-btn" data-ar-launch><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4.6 18.4 8.3v7.4L12 19.4l-6.4-3.7V8.3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5.6 8.3 12 12l6.4-3.7M12 12v7.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 6.5v-4h4M17.5 2.5h4v4M21.5 17.5v4h-4M6.5 21.5h-4v-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Chamar a VIDA para o meu espaço</span></button>
       <p class="ra-hint"><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="7" y="2.5" width="10" height="19" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Aponte o celular para o chão, mova devagar e toque para posicionar.</span></p>
     </div>
+    <div class="ra-fotocta"><button type="button" class="ra-foto-btn" data-foto-open><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.4-2h5.8l1.4 2h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12.8" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>Tirar uma foto com a VIDA</span></button>
+      <p class="ra-hint"><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.4-2h5.8l1.4 2h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12.8" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>Funciona em qualquer celular com câmera: ela chama você para o lado, conta até três e posa.</span></p></div>
     <div class="ra-noar">
       <p class="ra-noar__t">Este navegador não abriu a realidade aumentada.</p>
       <p class="ra-noar__s">No iPhone, abra esta página no Safari; no Android, no Chrome (em aparelhos compatíveis com ARCore).<span class="ra-noar__spin"> Enquanto isso, você pode girar o modelo 3D com o dedo.</span></p>
@@ -84,9 +87,9 @@
     <span class="ra-stage__floor" aria-hidden="true"></span>
     <model-viewer
       id="mv"
-      src="media/3d/ar/vida.glb?v=7364db35"
-      ios-src="media/3d/ar/vida.usdz?v=956a8831#canonicalWebPageURL=https://tucoamazing.github.io/semad-ra/vida.html"
-      poster="media/poster/vida.webp?v=914a4414"
+      src="media/3d/ar/vida.glb?v=d05927b4"
+      ios-src="media/3d/ar/vida.usdz?v=90199851#canonicalWebPageURL=https://tucoamazing.github.io/semad-ra/vida.html"
+      poster="media/poster/vida.webp?v=f49cede3"
       alt="Modelo 3D animado da VIDA, a guia da Expedição Parques GO, acenando"
       ar
       ar-modes="webxr scene-viewer quick-look"
@@ -109,6 +112,7 @@
       data-loop="idle"
       data-gesture="acenar-curto"
       data-gesture-orbit="0deg 84deg 112%"
+      data-fala="{&quot;falas&quot;:{&quot;ola&quot;:{&quot;src&quot;:&quot;media/audio/vida-ola.mp3?v=5c12b577&quot;,&quot;clip&quot;:&quot;fala-ola&quot;,&quot;dur&quot;:6.6,&quot;texto&quot;:&quot;Olá! Eu sou a Vida, personagem da Semad. Quer tirar uma foto comigo?&quot;},&quot;vem&quot;:{&quot;src&quot;:&quot;media/audio/vida-vem.mp3?v=10f3086b&quot;,&quot;clip&quot;:&quot;fala-vem&quot;,&quot;dur&quot;:3.56,&quot;texto&quot;:&quot;Oba! Vem aqui pro meu ladinho!&quot;},&quot;contagem&quot;:{&quot;src&quot;:&quot;media/audio/vida-contagem.mp3?v=57057c0f&quot;,&quot;clip&quot;:&quot;foto-contagem&quot;,&quot;dur&quot;:10.68,&quot;texto&quot;:&quot;Preparados? Três... dois... um... Xiiis!&quot;},&quot;ficou&quot;:{&quot;src&quot;:&quot;media/audio/vida-ficou.mp3?v=798efe18&quot;,&quot;clip&quot;:&quot;fala-ficou&quot;,&quot;dur&quot;:4.68,&quot;texto&quot;:&quot;Ficou demais! Obrigada!&quot;}},&quot;pose&quot;:&quot;foto-pose&quot;,&quot;xis&quot;:8.6}"
       data-measure="altura"
       environment-image="neutral"
       tone-mapping="neutral"
@@ -119,18 +123,27 @@
       reveal="auto"
       a11y="{&quot;front&quot;:&quot;Vista de frente&quot;,&quot;right&quot;:&quot;Vista pela direita&quot;,&quot;back&quot;:&quot;Vista de trás&quot;,&quot;left&quot;:&quot;Vista pela esquerda&quot;,&quot;upper-front&quot;:&quot;Vista de cima, pela frente&quot;,&quot;upper-right&quot;:&quot;Vista de cima, pela direita&quot;,&quot;upper-back&quot;:&quot;Vista de cima, por trás&quot;,&quot;upper-left&quot;:&quot;Vista de cima, pela esquerda&quot;,&quot;lower-front&quot;:&quot;Vista de baixo, pela frente&quot;,&quot;lower-right&quot;:&quot;Vista de baixo, pela direita&quot;,&quot;lower-back&quot;:&quot;Vista de baixo, por trás&quot;,&quot;lower-left&quot;:&quot;Vista de baixo, pela esquerda&quot;,&quot;interaction-prompt&quot;:&quot;Use o toque, o mouse ou as setas do teclado para girar.&quot;}">
       <div class="ra-poster" slot="poster">
-        <img class="ra-poster__img" src="media/poster/vida.webp?v=914a4414" alt="" width="536" height="1000" decoding="async" fetchpriority="high">
+        <img class="ra-poster__img" src="media/poster/vida.webp?v=f49cede3" alt="" width="536" height="1000" decoding="async" fetchpriority="high">
         <p class="ra-loader"><span class="ra-loader__ring" aria-hidden="true"></span>Carregando o modelo 3D</p>
       </div>
       <div class="ra-progress" slot="progress-bar" aria-hidden="true"><span></span></div>
       <span class="ra-anchor" slot="hotspot-chao" data-position="0m 0m 0m" data-normal="0m 1m 0m" aria-hidden="true"></span>
       <span slot="ar-button" hidden></span>
+      <div class="ra-arui" data-arui>
+        <p class="ra-arui__msg" data-arui-msg aria-live="polite"></p>
+        <div class="ra-arui__row">
+          <button type="button" class="ra-arui__btn" data-fala-play><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.6 7.6 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Ouvir a VIDA</span></button>
+          <button type="button" class="ra-arui__btn ra-arui__btn--foto" data-foto-ar><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.4-2h5.8l1.4 2h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12.8" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>Foto com a VIDA</span></button>
+        </div>
+      </div>
     </model-viewer>
     <span class="ra-corner ra-corner--tl" aria-hidden="true"></span><span class="ra-corner ra-corner--tr" aria-hidden="true"></span><span class="ra-corner ra-corner--bl" aria-hidden="true"></span><span class="ra-corner ra-corner--br" aria-hidden="true"></span>
     <div class="ra-stage__tools">
       <button type="button" class="ra-chip" data-motion data-state="playing"><svg class="ra-ico ra-ico--pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6v12M15 6v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><svg class="ra-ico ra-ico--play" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></svg><span class="ra-chip__label" data-motion-label>Pausar movimento</span></button>
       <button type="button" class="ra-chip" data-gesture-play><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 13.5V7a1.5 1.5 0 0 1 3 0v4.5M11 11V5.5a1.5 1.5 0 0 1 3 0V11M14 11V7a1.5 1.5 0 0 1 3 0v7a6 6 0 0 1-6 6h-.4a5.6 5.6 0 0 1-4.7-2.6L3.7 14a1.5 1.5 0 0 1 2.5-1.6L8 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 3c1.2.7 2 1.9 2.3 3.2M17.4 5.2c.6.4 1 1 1.2 1.7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="ra-chip__label">Acenar<span class="ra-sr">: VIDA acena</span></span></button>
+      <button type="button" class="ra-chip ra-chip--fala" data-fala-play><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.6 7.6 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="ra-chip__label">Ouvir<span class="ra-sr"> a VIDA</span></span></button>
     </div>
+    <p class="ra-legenda" data-legenda aria-live="polite"></p>
     <p class="ra-stage__hud" aria-hidden="true"><span>Arraste para girar</span><span class="ra-stage__dim" data-dim></span></p>
     <div class="ra-stage__error">
       <p class="ra-stage__error-t" data-error-text>Não foi possível carregar o modelo 3D. Verifique a conexão.</p>
@@ -146,6 +159,30 @@
     </nav>
   </section>
 </main>
+<div class="ra-foto" data-foto hidden role="dialog" aria-modal="true" aria-label="Foto com a VIDA">
+  <video class="ra-foto__cam" data-foto-cam playsinline muted autoplay></video>
+  <div class="ra-foto__vida" data-foto-vida></div>
+  <div class="ra-foto__lado" data-foto-lado aria-hidden="true"><span>Fique aqui</span></div>
+  <div class="ra-foto__flash" data-foto-flash aria-hidden="true"></div>
+  <div class="ra-foto__top">
+    <button type="button" class="ra-foto__ic" data-foto-close aria-label="Fechar o modo foto"><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    <p class="ra-foto__tag">Foto com a VIDA</p>
+    <button type="button" class="ra-foto__ic" data-foto-flip aria-label="Trocar de câmera"><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4.5v4h-4M20 12a8 8 0 0 1-13.7 5.6L4 15.5M4 19.5v-4h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+  <p class="ra-foto__msg" data-foto-msg aria-live="polite">Arraste a VIDA para o lugar; pince para aproximar.</p>
+  <p class="ra-foto__count" data-foto-count aria-hidden="true"></p>
+  <div class="ra-foto__bottom">
+    <button type="button" class="ra-foto__shoot" data-foto-shoot><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.4-2h5.8l1.4 2h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12.8" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>Tirar a foto</span></button>
+  </div>
+  <div class="ra-foto__prev" data-foto-prev hidden>
+    <img data-foto-img alt="Sua foto com a VIDA">
+    <div class="ra-foto__prev-do">
+      <a class="ra-foto__btn" data-foto-save download="foto-com-a-vida.jpg"><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Salvar</span></a>
+      <button type="button" class="ra-foto__btn" data-foto-share hidden><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 15V4M8 7.5l4-3.5 4 3.5M6 11v8.5h12V11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Compartilhar</span></button>
+      <button type="button" class="ra-foto__btn ra-foto__btn--ghost" data-foto-again><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.4-2h5.8l1.4 2h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12.8" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>Tirar outra</span></button>
+    </div>
+  </div>
+</div>
 <footer class="ra-foot">
   <p class="ra-selo"><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4.6 18.4 8.3v7.4L12 19.4l-6.4-3.7V8.3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5.6 8.3 12 12l6.4-3.7M12 12v7.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 6.5v-4h4M17.5 2.5h4v4M21.5 17.5v4h-4M6.5 21.5h-4v-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Expedição Parques GO · AMB Studio para SEMAD</span></p>
 </footer>

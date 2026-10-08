@@ -24,10 +24,10 @@
 <link rel="apple-touch-icon" href="assets/icone-180.png">
 <link rel="preload" href="assets/fonts/inter-tight-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/instrument-serif-latin-400-italic.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/ra.css?v=a39c3739">
+<link rel="stylesheet" href="assets/ra.css?v=48a5b540">
 <script type="module" src="assets/model-viewer.min.js?v=4.3.1" integrity="sha384-cprcVQt7wbUl0xngF3PGP6yBB7n4/t+4AoAMG9biiMCGFiWOdzUH10Ie2COTqFNW" crossorigin="anonymous"></script>
-<script type="module" src="assets/ra.js?v=8b80f8fc"></script>
-<noscript><style>.ra-cta,.ra-noar,.ra-stage__tools,.ra-vida3d__ar,.ra-size{display:none!important}.ra-desk{display:grid!important}</style></noscript>
+<script type="module" src="assets/ra.js?v=2e8eaf8b"></script>
+<noscript><style>.ra-cta,.ra-noar,.ra-fotocta,.ra-ouvir,.ra-stage__tools,.ra-vida3d__ar,.ra-size{display:none!important}.ra-desk{display:grid!important}</style></noscript>
 </head>
 <body class="ra ra--item ra--morcego" data-ar="checking">
 <a class="ra-skip" href="#conteudo">Pular para o conteúdo</a>
@@ -42,7 +42,7 @@
     <model-viewer
       id="mv"
       src="media/3d/ar/morcego.glb?v=f140066a"
-      ios-src="media/3d/ar/morcego.usdz?v=5e7f639a#canonicalWebPageURL=https://tucoamazing.github.io/semad-ra/morcego.html"
+      ios-src="media/3d/ar/morcego.usdz?v=8405cb5e#canonicalWebPageURL=https://tucoamazing.github.io/semad-ra/morcego.html"
       poster="media/poster/morcego.webp?v=ba8fd514"
       alt="Modelo 3D animado de um morcego batendo as asas"
       ar
@@ -81,12 +81,15 @@
       <div class="ra-progress" slot="progress-bar" aria-hidden="true"><span></span></div>
       <span class="ra-anchor" slot="hotspot-chao" data-position="0m 0m 0m" data-normal="0m 1m 0m" aria-hidden="true"></span>
       <span slot="ar-button" hidden></span>
+      
     </model-viewer>
     <span class="ra-corner ra-corner--tl" aria-hidden="true"></span><span class="ra-corner ra-corner--tr" aria-hidden="true"></span><span class="ra-corner ra-corner--bl" aria-hidden="true"></span><span class="ra-corner ra-corner--br" aria-hidden="true"></span>
     <div class="ra-stage__tools">
       <button type="button" class="ra-chip" data-motion data-state="playing"><svg class="ra-ico ra-ico--pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6v12M15 6v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><svg class="ra-ico ra-ico--play" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></svg><span class="ra-chip__label" data-motion-label>Pausar movimento</span></button>
       
+      
     </div>
+    
     <p class="ra-stage__hud" aria-hidden="true"><span>Arraste para girar</span><span class="ra-stage__dim" data-dim>Na RA · 40 cm</span></p>
     <div class="ra-stage__error">
       <p class="ra-stage__error-t" data-error-text>Não foi possível carregar o modelo 3D. Verifique a conexão.</p>
@@ -102,10 +105,12 @@
     <p class="ra-chamada">O único mamífero que voa de verdade. Muitos morcegos ajudam a natureza à noite: espalham sementes, polinizam flores ou comem insetos. Veja um de perto, em pleno voo.</p>
     <p class="ra-size" data-size data-static><span class="ra-size__k">Tamanho na RA<span class="ra-sr">:</span></span> <span data-size-v>cerca de 40 cm de envergadura</span></p>
     
+    
     <div class="ra-cta">
       <button type="button" class="ra-ar-btn" data-ar-launch><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4.6 18.4 8.3v7.4L12 19.4l-6.4-3.7V8.3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5.6 8.3 12 12l6.4-3.7M12 12v7.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 6.5v-4h4M17.5 2.5h4v4M21.5 17.5v4h-4M6.5 21.5h-4v-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ver no meu espaço</span></button>
       <p class="ra-hint"><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="7" y="2.5" width="10" height="19" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Aponte o celular para uma mesa (ou para o chão), mova devagar e toque para posicionar.</span></p>
     </div>
+    
     <div class="ra-noar">
       <p class="ra-noar__t">Este navegador não abriu a realidade aumentada.</p>
       <p class="ra-noar__s">No iPhone, abra esta página no Safari; no Android, no Chrome (em aparelhos compatíveis com ARCore).<span class="ra-noar__spin"> Enquanto isso, você pode girar o modelo 3D com o dedo.</span></p>
@@ -129,6 +134,7 @@
   </section>
   
 </main>
+
 <footer class="ra-foot">
   <p class="ra-selo"><svg class="ra-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4.6 18.4 8.3v7.4L12 19.4l-6.4-3.7V8.3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5.6 8.3 12 12l6.4-3.7M12 12v7.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 6.5v-4h4M17.5 2.5h4v4M21.5 17.5v4h-4M6.5 21.5h-4v-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Expedição Parques GO · AMB Studio para SEMAD</span></p>
 </footer>

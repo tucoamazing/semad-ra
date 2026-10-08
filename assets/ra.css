@@ -1777,3 +1777,413 @@ body[data-ar='yes'] .ra-cta {
     display: none !important;
   }
 }
+
+/* ---------------------------------------------------------------- VIDA falante e modo foto (07/10/2026) */
+.ra-chip--fala {
+  border-color: rgb(216 174 103 / 0.55);
+}
+.ra-chip--fala[data-state='playing'] {
+  background: var(--amber);
+  color: var(--bg-deep);
+}
+@media (max-width: 480px) {
+  .ra-stage__tools .ra-chip--fala {
+    width: auto;
+    padding: 8px 14px 8px 10px;
+  }
+  .ra-stage__tools .ra-chip--fala .ra-chip__label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+  }
+}
+.ra-ouvir {
+  margin: 14px 0 0;
+}
+.ra-ouvir .ra-chip {
+  min-height: 44px;
+  padding: 8px 16px 8px 12px;
+}
+/* legenda da fala, na base do palco (acima da régua) */
+.ra-legenda {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: 44px;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: rgb(9 15 13 / 0.78);
+  color: var(--cream);
+  font-size: 0.95rem;
+  line-height: 1.35;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.25s var(--ease);
+  pointer-events: none;
+}
+.ra-legenda:not(:empty) {
+  opacity: 1;
+}
+/* botão “Tirar uma foto com a VIDA” na chamada */
+.ra-foto-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  margin-top: 12px;
+  padding: 12px 24px;
+  border: 1px solid rgb(216 174 103 / 0.6);
+  border-radius: 999px;
+  background: rgb(216 174 103 / 0.08);
+  color: var(--cream);
+  font: inherit;
+  font-size: 1.0625rem;
+  font-weight: 620;
+  cursor: pointer;
+  transition: background 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+.ra-foto-btn .ra-ico {
+  width: 1.45em;
+  height: 1.45em;
+  color: var(--amber);
+}
+.ra-foto-btn:hover {
+  background: rgb(216 174 103 / 0.16);
+  border-color: var(--amber);
+}
+.ra-foto-btn:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+}
+/* o modo foto só precisa de câmera: aparece com ou sem RA (com JavaScript) */
+.ra-fotocta {
+  margin-top: 4px;
+}
+.ra-fotocta .ra-hint {
+  margin-top: 10px;
+}
+/* depois do “Quer tirar uma foto comigo?”, o botão de foto chama a atenção por 4 s */
+.ra-foto-btn.is-hint {
+  border-color: var(--amber);
+  background: rgb(216 174 103 / 0.2);
+  box-shadow: 0 0 0 0 rgb(216 174 103 / 0.55);
+  animation: ra-hint 1.3s var(--ease) 3;
+}
+@keyframes ra-hint {
+  0% {
+    box-shadow: 0 0 0 0 rgb(216 174 103 / 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 16px rgb(216 174 103 / 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ra-foto-btn.is-hint {
+    animation: none;
+  }
+}
+/* interface dentro da RA (WebXR): só com a sessão aberta (o model-viewer marca ar-status) */
+.ra-arui {
+  display: none;
+}
+model-viewer[ar-status='session-started'] .ra-arui,
+model-viewer[ar-status='object-placed'] .ra-arui {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(28px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  pointer-events: none;
+}
+.ra-arui__row {
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+.ra-arui__btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(9 15 13 / 0.82);
+  color: var(--cream);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 620;
+}
+.ra-arui__btn .ra-ico {
+  width: 1.4em;
+  height: 1.4em;
+}
+.ra-arui__btn--foto {
+  background: linear-gradient(180deg, #e7c07c, var(--amber));
+  color: var(--bg-deep);
+}
+.ra-arui__msg {
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: rgb(9 15 13 / 0.78);
+  color: var(--cream);
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: center;
+}
+.ra-arui__msg:empty {
+  display: none;
+}
+/* modo foto: tela cheia */
+.ra-foto {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  background: #111;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ra-foto[hidden] {
+  display: none;
+}
+.ra-foto__cam {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: radial-gradient(120% 80% at 50% 30%, #6f8f63, #2c3d2b 70%);
+}
+.ra-foto[data-facing='user'] .ra-foto__cam {
+  transform: scaleX(-1);
+}
+.ra-foto__vida {
+  position: absolute;
+  inset: 0;
+}
+.ra-foto__vida model-viewer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  --poster-color: transparent;
+  --progress-bar-color: transparent;
+}
+/* lugar da pessoa: tracejado ao lado da VIDA enquanto ela chama */
+.ra-foto__lado {
+  position: absolute;
+  bottom: 14%;
+  width: 34%;
+  height: 58%;
+  border: 2px dashed rgb(243 240 231 / 0.75);
+  border-radius: 48% 48% 18px 18px;
+  display: grid;
+  place-items: end center;
+  padding-bottom: 14px;
+  color: var(--cream);
+  font-weight: 650;
+  font-size: 1rem;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.6);
+  opacity: 0;
+  transition: opacity 0.4s var(--ease);
+  pointer-events: none;
+}
+.ra-foto[data-fase='chamar'] .ra-foto__lado,
+.ra-foto[data-fase='espera'] .ra-foto__lado {
+  opacity: 1;
+}
+.ra-foto__flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+.ra-foto__flash.is-on {
+  animation: ra-flash 0.55s ease-out;
+}
+@keyframes ra-flash {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ra-foto__top {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ra-foto__tag {
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgb(9 15 13 / 0.6);
+  color: var(--cream);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.ra-foto__ic {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(9 15 13 / 0.6);
+  color: var(--cream);
+  cursor: pointer;
+}
+.ra-foto__ic .ra-ico {
+  width: 24px;
+  height: 24px;
+}
+.ra-foto__msg {
+  position: absolute;
+  left: 50%;
+  top: calc(max(12px, env(safe-area-inset-top)) + 64px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 9px 16px;
+  border-radius: 14px;
+  background: rgb(9 15 13 / 0.72);
+  color: var(--cream);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+}
+.ra-foto__msg:empty {
+  display: none;
+}
+.ra-foto__count {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  color: #fff;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(5rem, 22vw, 9rem);
+  line-height: 1;
+  text-shadow: 0 4px 24px rgb(0 0 0 / 0.45);
+  pointer-events: none;
+}
+.ra-foto__bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  padding: 0 16px;
+}
+.ra-foto__shoot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 30px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e7c07c, var(--amber));
+  color: var(--bg-deep);
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 680;
+  box-shadow: 0 14px 40px -12px rgb(0 0 0 / 0.6);
+  cursor: pointer;
+}
+.ra-foto__shoot .ra-ico {
+  width: 1.5em;
+  height: 1.5em;
+}
+.ra-foto__shoot[disabled] {
+  opacity: 0;
+  pointer-events: none;
+}
+.ra-foto__prev {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: calc(max(12px, env(safe-area-inset-top)) + 60px) 16px max(22px, env(safe-area-inset-bottom));
+  background: rgb(9 15 13 / 0.94);
+}
+.ra-foto__prev[hidden] {
+  display: none;
+}
+.ra-foto__prev img {
+  max-width: 100%;
+  max-height: calc(100% - 96px);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px -16px rgb(0 0 0 / 0.8);
+}
+.ra-foto__prev-do {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.ra-foto__btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e7c07c, var(--amber));
+  color: var(--bg-deep);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ra-foto__btn[hidden] {
+  display: none;
+}
+.ra-foto__btn .ra-ico {
+  width: 1.3em;
+  height: 1.3em;
+}
+.ra-foto__btn--ghost {
+  background: rgb(243 240 231 / 0.1);
+  color: var(--cream);
+  box-shadow: inset 0 0 0 1px rgb(243 240 231 / 0.3);
+}
+html.ra-foto-aberta,
+html.ra-foto-aberta body {
+  overflow: hidden;
+}

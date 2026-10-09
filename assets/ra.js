@@ -22,6 +22,16 @@
     root.removeAttribute('data-kbd')
   })
 
+  // AR Quick Look (iPhone/iPad). A mesma regra do model-viewer: o relList falha nos navegadores do iPhone que não são
+  // o Safari (Chrome, Edge, Firefox, app Google — todos WKWebView), mas o Quick Look abre neles do mesmo jeito.
+  function temQuickLook() {
+    var ua = navigator.userAgent
+    var ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    if (ios && /CriOS\/|EdgiOS\/|FxiOS\/|GSA\/|DuckDuckGo\//.test(ua)) return true
+    var a = document.createElement('a')
+    return !!(a.relList && a.relList.supports && a.relList.supports('ar'))
+  }
+
   // Misturador interno do model-viewer (three.js), pelo símbolo “scene”: para mexer no relógio de UMA ação só.
   // O relógio global (mv.currentTime) zera todas as ações — o laço que está saindo pulava para o 1º quadro e a
   // mistura recomeçava: a “flicada” antes de cada gesto (medido: cabeça saltando 17° num quadro, 08/10).
@@ -586,8 +596,7 @@
       return !!(window.customElements && customElements.get('model-viewer'))
     }
     function platform() {
-      var a = document.createElement('a')
-      if (a.relList && a.relList.supports && a.relList.supports('ar')) return 'ios'
+      if (temQuickLook()) return 'ios'
       if (/Android/i.test(navigator.userAgent)) return 'android'
       return 'other'
     }
@@ -812,6 +821,12 @@
     }
     if (!cfg || !cfg.falas) return
     var F = cfg.falas
+    // iPhone/iPad (AR Quick Look): mostra o aviso de como fazê-la falar lá dentro
+    if (temQuickLook()) {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-ios-only]'), function (el) {
+        el.hidden = false
+      })
+    }
     var voice = new Audio()
     voice.preload = 'auto'
     voice.setAttribute('playsinline', '')
@@ -822,22 +837,28 @@
     var speaking = null
     var syncRaf = 0
 
+    // ficha da liberação: uma fala que começa depois dela a invalida (09/10 — no 1º toque em “Ouvir”, o play mudo
+    // terminava DEPOIS de a fala começar no mesmo <audio> e a pausa dele cortava a fala: a VIDA ficava muda no iPhone)
+    var primeTok = 0
     function prime() {
       // dentro de um toque: um play mudo libera a voz para as falas que vêm depois (RA, sequência da foto)
-      if (primed) return
+      if (primed || speaking) return
       primed = true
+      var tok = ++primeTok
       try {
         voice.src = F.ola.src
         voice.muted = true
         var p = voice.play()
         if (p && p.then) {
           p.then(function () {
-            voice.pause()
+            if (tok === primeTok && !speaking) {
+              voice.pause()
+              voice.currentTime = 0
+            }
             voice.muted = false
-            voice.currentTime = 0
           }).catch(function () {
             voice.muted = false
-            primed = false
+            if (tok === primeTok) primed = false
           })
         }
       } catch (e) {
@@ -892,37 +913,57 @@
           resolve(!s.cancelled)
         }
         speaking = s
+        primeTok++
         setPlaying(true)
         caption(f.texto)
         function check() {
           if (s.voiceDone && s.clipDone) s.finish()
         }
-        voice.onended = function () {
+        // voz acabou: o clipe ainda termina o gesto (é ~1 s mais longo), mas não se espera por ele para sempre —
+        // fora da tela o model-viewer CONGELA a animação, e a fala ficava “tocando” sem som (09/10: o 2º “Ouvir”
+        // depois do botão de RA do topo só calava a fala presa — a VIDA ficava muda no iPhone)
+        function vozAcabou() {
           s.voiceDone = true
           check()
+          if (s.clipDone) return
+          var act = viewer && acaoDe(viewer, f.clip)
+          var resto = act ? Math.max(0, act.getClip().duration - act.time) + 1 : 1.5
+          setTimeout(function () {
+            if (speaking === s && !s.clipDone) {
+              s.clipDone = true
+              check()
+            }
+          }, resto * 1000)
         }
-        voice.onerror = function () {
-          s.voiceDone = true
-          check()
-        }
+        voice.onended = vozAcabou
+        voice.onerror = vozAcabou
+        voice.onpause = null
         voice.muted = false
         voice.src = f.src
         try {
           voice.currentTime = 0
         } catch (e) {}
         var vp = voice.play()
-        if (vp && vp.catch) {
-          vp.catch(function () {
+        if (vp && vp.then) {
+          vp.then(function () {
+            // pausa vinda de fora (o iOS pausa o áudio da página ao abrir o Quick Look, ligação, troca de app): encerra
+            // a fala em vez de deixá-la presa. Só depois do play — a troca de src pode enfileirar um “pause” antigo.
+            voice.onpause = function () {
+              if (speaking === s && !s.cancelled && voice.paused && !voice.ended) {
+                s.voiceDone = true
+                s.clipDone = true
+                check()
+              }
+            }
+          }, function () {
             // sem som (navegador bloqueou): a fala segue só com a legenda e o tempo do arquivo (relógio reserva)
             s.fake = performance.now()
             s.voiceDone = false
-            setTimeout(function () {
-              s.voiceDone = true
-              check()
-            }, (f.dur || 3) * 1000)
+            setTimeout(vozAcabou, (f.dur || 3) * 1000)
           })
         }
-        var animate = api.moving() && player
+        // modelo ainda não carregado (ou com erro): só a voz e a legenda — sem clipe não há quem avise o fim
+        var animate = api.moving() && player && !(player.viewer && player.viewer.loaded === false)
         if (animate) {
           player.play(f.clip, function () {
             s.clipDone = true
@@ -979,7 +1020,8 @@
           var st = mv.closest('.ra-stage')
           if (st && st.scrollIntoView) st.scrollIntoView({ behavior: reducedPref() ? 'auto' : 'smooth', block: 'center' })
         }
-        if (speaking && speaking.key === 'ola') {
+        // 2º toque cala — mas só se a voz estiver soando de fato; uma fala que ficou presa recomeça (speak para a anterior)
+        if (speaking && speaking.key === 'ola' && !speaking.voiceDone && !voice.paused && !voice.ended) {
           stop()
           api.toLoop()
           return
@@ -1072,9 +1114,20 @@
     }
 
     setupFoto(mv, cfg, speak, prime, stop, wait)
-    // a VIDA do palco segue a câmera (com o movimento ligado)
+    // a VIDA do palco segue a câmera (com o movimento ligado) — mas NÃO enquanto o giro automático roda o modelo: a
+    // cabeça ficava presa na câmera sobre um corpo girando (“efeito coruja”, medido em 09/10). Arrastando, falando e
+    // na RA o modelo não gira, e ela volta a seguir
+    var ttUlt = null
+    var ttGiro = 0
+    function girando() {
+      var t = typeof mv.turntableRotation === 'number' ? mv.turntableRotation : 0
+      var agora = performance.now()
+      if (ttUlt !== null && Math.abs(t - ttUlt) > 1e-4) ttGiro = agora
+      ttUlt = t
+      return agora - ttGiro < 600
+    }
     setupOlhar(mv, function () {
-      return api.moving()
+      return api.moving() && !girando()
     })
   }
 

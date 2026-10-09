@@ -69,6 +69,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100vh;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -446,6 +447,7 @@ body[data-model='error'] .ra-status {
 .ra-stage {
   position: relative;
   isolation: isolate;
+  height: clamp(340px, 60vh, 620px);
   height: clamp(340px, 60svh, 620px);
   margin: 20px var(--gutter) 0;
   /* a palavra gigante do fundo (decorativa) nunca cria rolagem lateral — com o espaçamento de texto do 1.4.12 ela
@@ -1092,6 +1094,7 @@ body[data-ar='yes'] .ra-cta {
 
 .ra-video__frame {
   position: relative;
+  width: min(100%, 20rem, calc(62vh * 9 / 16));
   width: min(100%, 20rem, calc(62svh * 9 / 16));
   border-radius: 18px;
   overflow: hidden;
@@ -1442,6 +1445,7 @@ body[data-ar='yes'] .ra-cta {
   .ra-main--item > .ra-stage {
     position: sticky;
     top: 24px;
+    height: min(calc(100vh - var(--top-h) - 88px), 780px);
     height: min(calc(100svh - var(--top-h) - 88px), 780px);
     min-height: 480px;
     margin: 24px 0;
@@ -1480,6 +1484,7 @@ body[data-ar='yes'] .ra-cta {
 
   .ra-main--vida .ra-vida3d .ra-stage {
     margin: 0;
+    height: min(calc(100vh - var(--top-h) - 140px), 760px);
     height: min(calc(100svh - var(--top-h) - 140px), 760px);
     min-height: 460px;
   }
@@ -1515,6 +1520,7 @@ body[data-ar='yes'] .ra-cta {
   }
 
   .ra-main--vida .ra-video__frame {
+    width: min(17rem, calc((100vh - 480px) * 9 / 16));
     width: min(17rem, calc((100svh - 480px) * 9 / 16));
     min-width: 190px;
   }
@@ -1595,6 +1601,7 @@ body[data-ar='yes'] .ra-cta {
   .ra-main--item:not(.ra-main--vida) > .ra-stage {
     position: sticky;
     top: 8px;
+    height: calc(100vh - 24px);
     height: calc(100svh - 24px);
     min-height: 0;
     margin: 12px 0 12px var(--gutter);
@@ -1649,6 +1656,7 @@ body[data-ar='yes'] .ra-cta {
 
   @media (min-height: 521px) {
     .ra-main--item:not(.ra-main--vida) > .ra-stage {
+      height: clamp(320px, 50vh, 560px);
       height: clamp(320px, 50svh, 560px);
     }
   }
@@ -1864,6 +1872,13 @@ body[data-ar='yes'] .ra-cta {
   outline: 2px solid var(--amber);
   outline-offset: 3px;
 }
+/* aviso só no iPhone/iPad (o ra.js tira o hidden); sem esta regra o display do .ra-hint venceria o [hidden] */
+.ra-hint[hidden] {
+  display: none;
+}
+.ra-hint--ios {
+  margin: 4px 0 6px;
+}
 /* o modo foto só precisa de câmera: aparece com ou sem RA (com JavaScript) */
 .ra-fotocta {
   margin-top: 4px;
@@ -2030,6 +2045,7 @@ model-viewer[ar-status='object-placed'] .ra-arui {
 }
 .ra-foto__top {
   position: absolute;
+  z-index: 2;
   top: max(12px, env(safe-area-inset-top));
   left: 12px;
   right: 12px;

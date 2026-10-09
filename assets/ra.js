@@ -22,6 +22,34 @@
     root.removeAttribute('data-kbd')
   })
 
+  // Misturador interno do model-viewer (three.js), pelo símbolo “scene”: para mexer no relógio de UMA ação só.
+  // O relógio global (mv.currentTime) zera todas as ações — o laço que está saindo pulava para o 1º quadro e a
+  // mistura recomeçava: a “flicada” antes de cada gesto (medido: cabeça saltando 17° num quadro, 08/10).
+  function cenaDe(v) {
+    var syms = Object.getOwnPropertySymbols(v)
+    for (var i = 0; i < syms.length; i++) if (syms[i].description === 'scene') return v[syms[i]]
+    return null
+  }
+  function acaoDe(v, name) {
+    var sc = cenaDe(v)
+    var mx = sc && sc.mixers && sc.mixers[0]
+    var acts = mx && mx._actions
+    if (!acts) return null
+    for (var i = 0; i < acts.length; i++) if (acts[i].getClip && acts[i].getClip().name === name) return acts[i]
+    return null
+  }
+  // antes de trocar para um clipe que já tocou (parado no fim): zera só ele. Sem isso o model-viewer, ao ver o clipe
+  // no fim, zera o relógio de TODAS as ações. Devolve false quando o misturador não está acessível.
+  function preparaClipe(v, name) {
+    if (!cenaDe(v)) return false
+    var a = acaoDe(v, name)
+    if (a) {
+      a.time = 0
+      a.paused = false
+    }
+    return true
+  }
+
   var mv = document.querySelector('model-viewer')
   if (mv) setupViewer(mv)
   setupVideo()
@@ -323,7 +351,9 @@
         // Pausado: o laço volta a tocar antes da troca, para o aceno entrar pela mistura (com o modelo pausado, a troca
         // para todas as ações e o braço saltaria).
         if (mv.paused) mv.play()
-        mv.currentTime = 0
+        // 08/10: o relógio global não é mais zerado (o laço que sai pulava para o 1º quadro: a “flicada”); zera só o
+        // clipe que entra, ANTES da troca. Sem acesso ao misturador, o comportamento antigo.
+        if (!preparaClipe(mv, activeGesture)) mv.currentTime = 0
         mv.animationName = activeGesture
         go()
         ;(mv.updateComplete || Promise.resolve()).then(go)
@@ -914,8 +944,12 @@
             if (!playing) t = f.dur || 3
           }
           if (viewer && playing && !s.fake && viewer.animationName === f.clip && !viewer.paused) {
-            var d = (viewer.currentTime || 0) - t
-            if (Math.abs(d) > 0.08 && t < (viewer.duration || 0) - 0.1) viewer.currentTime = t
+            // acerta só a ação da fala (o relógio global zerava também a mistura com o laço)
+            var act = acaoDe(viewer, f.clip)
+            if (act) {
+              var d = act.time - t
+              if (Math.abs(d) > 0.08 && t < act.getClip().duration - 0.1) act.time = t
+            }
           }
           if (onCue) lastCue = onCue(playing || s.fake ? t : voice.ended ? f.dur || 99 : -1, lastCue)
         })()
@@ -1088,9 +1122,11 @@
         if (!v) return done && done()
         cancelAnimationFrame(player.watch)
         v.animationCrossfadeDuration = loop ? 300 : 160
-        try {
-          v.currentTime = 0
-        } catch (e) {}
+        if (!preparaClipe(v, clip)) {
+          try {
+            v.currentTime = 0
+          } catch (e) {}
+        }
         v.animationName = clip
         var opts = loop ? { repetitions: Infinity } : { repetitions: 1, pingpong: false }
         v.play(opts)
@@ -1615,7 +1651,7 @@
       return 1
     }
     function apply(camera) {
-      if (!camera || camera.isOrthographicCamera) return
+      if (!camera || camera.isOrthographicCamera || window.__olharOff) return
       var mainCam = camera.isArrayCamera || camera === st.scene.camera || (st.scene.getCamera && camera === st.scene.getCamera())
       if (!mainCam) return
       var b = st.b, T = st.tmp

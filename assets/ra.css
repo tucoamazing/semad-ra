@@ -366,6 +366,10 @@ body[data-model='error'] .ra-status {
   width: 1.6em;
   height: 1.6em;
 }
+/* 13/10 (verificação r1): no iPhone de 360–375 px o rótulo longo quebrava como “… (com / voz)”; linhas equilibradas */
+.ra-ar-btn span {
+  text-wrap: balance;
+}
 
 .ra-ar-btn:hover {
   background: linear-gradient(180deg, #f3d59c, #e7bf78);
@@ -1794,6 +1798,10 @@ body[data-ar='yes'] .ra-cta {
   background: var(--amber);
   color: var(--bg-deep);
 }
+/* 13/10 (verificação r1): o ícone âmbar sumia sobre o fundo âmbar da fala */
+.ra-chip--fala[data-state='playing'] .ra-ico {
+  color: var(--bg-deep);
+}
 @media (max-width: 480px) {
   .ra-stage__tools .ra-chip--fala {
     width: auto;
@@ -1876,8 +1884,48 @@ body[data-ar='yes'] .ra-cta {
 .ra-hint[hidden] {
   display: none;
 }
-.ra-hint--ios {
-  margin: 4px 0 6px;
+/* iPhone (13/10): o AR Quick Look como chip secundário + a dica de como fazê-la falar lá (o ra.js tira o hidden) */
+.ra-ql {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  margin: 2px 0 4px;
+}
+.ra-ql[hidden] {
+  display: none;
+}
+.ra-ql__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgb(13 23 20 / 0.72);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 560;
+  line-height: 1.2;
+  text-decoration: none;
+}
+.ra-ql__chip::after {
+  content: attr(data-label);
+}
+.ra-ql__chip:hover {
+  border-color: var(--amber);
+  background: rgb(216 174 103 / 0.12);
+}
+.ra-ql__chip:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+}
+.ra-ql__ico {
+  width: 20px;
+  height: 20px;
+}
+.ra-ql .ra-hint {
+  justify-self: start;
 }
 /* o modo foto só precisa de câmera: aparece com ou sem RA (com JavaScript) */
 .ra-fotocta {
@@ -1963,7 +2011,180 @@ model-viewer[ar-status='object-placed'] .ra-arui {
 .ra-arui__msg:empty {
   display: none;
 }
-/* modo foto: tela cheia */
+/* 13/10: 📸 dentro da RA — redondo, só com o ícone, numa linha própria acima dos dois botões, como o disparador de uma
+   câmera (medido: os três numa linha pediam 418 px num celular de 390). Sai da RA e abre “A VIDA no seu mundo” já com a
+   sequência (ou, com ?camacc=1, tira a foto sem sair dela). Os dois botões com texto não quebram linha; em tela estreita
+   (360 px) ficam mais justos */
+.ra-arui__btn {
+  white-space: nowrap;
+}
+.ra-arui__btn:disabled,
+.ra-arui__ja:disabled {
+  opacity: 0.55;
+}
+.ra-arui__ja {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f6f1e6;
+  font-size: 1.75rem;
+  line-height: 1;
+  box-shadow:
+    0 0 0 4px rgb(246 241 230 / 0.35),
+    0 10px 24px -10px rgb(0 0 0 / 0.6);
+  pointer-events: auto;
+}
+.ra-arui__ja:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 5px;
+}
+/* 13/10 (verificação r2): rótulo curto sob o 📸 — ao lado do “Foto com a VIDA” (que pede um print), eram dois botões de foto
+   com resultados diferentes; este sai da RA e salva sozinho */
+.ra-arui__ja-t {
+  margin-top: -4px;
+  color: var(--cream);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-shadow: 0 0 2px rgb(0 0 0 / 0.9), 0 1px 8px rgb(0 0 0 / 0.6);
+  pointer-events: none;
+}
+@media (max-width: 380px) {
+  .ra-arui__row {
+    gap: 8px;
+  }
+  .ra-arui__btn {
+    gap: 6px;
+    padding: 10px 12px;
+    font-size: 0.9375rem;
+  }
+}
+/* ?camacc=1: a foto tirada dentro da RA — miniatura + aviso + Compartilhar */
+.ra-arui__foto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 8px 10px 8px 8px;
+  border-radius: 16px;
+  background: rgb(9 15 13 / 0.86);
+  color: var(--cream);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.3;
+  pointer-events: auto;
+}
+.ra-arui__foto[hidden] {
+  display: none;
+}
+.ra-arui__foto-img {
+  flex: none;
+  width: 44px;
+  height: 78px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.ra-arui__mini {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e7c07c, var(--amber));
+  color: var(--bg-deep);
+  font: inherit;
+}
+.ra-arui__mini .ra-ico {
+  width: 1.2em;
+  height: 1.2em;
+}
+.ra-arui__flash {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s;
+}
+.ra-arui__flash.is-on {
+  opacity: 0.85;
+  transition: none;
+}
+/* aviso de navegador dentro de app (Instagram, Facebook, WhatsApp, Line): o ra.js tira o hidden */
+.ra-app[hidden] {
+  display: none;
+}
+.ra-app-topo {
+  padding: 0 var(--gutter);
+}
+.ra-app-topo .ra-app {
+  margin: 12px 0 0;
+}
+.ra-app {
+  padding: 14px 16px;
+  border: 1px solid rgb(216 174 103 / 0.55);
+  border-radius: 16px;
+  background: rgb(216 174 103 / 0.12);
+  color: var(--cream);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  text-align: left;
+}
+.ra-app strong {
+  color: var(--amber);
+}
+.ra-app__s {
+  margin-top: 6px;
+  color: var(--text-2);
+}
+.ra-app__do {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.ra-app__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e7c07c, var(--amber));
+  color: var(--bg-deep);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ra-app__btn[hidden] {
+  display: none;
+}
+.ra-app__btn .ra-ico {
+  width: 1.2em;
+  height: 1.2em;
+}
+.ra-app__btn--ghost {
+  background: rgb(243 240 231 / 0.1);
+  color: var(--cream);
+  box-shadow: inset 0 0 0 1px rgb(243 240 231 / 0.3);
+}
+.ra-app__ok:empty {
+  display: none;
+}
+.ra-app__ok {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--green);
+}
+/* “A VIDA no seu mundo” (antes, modo foto): tela cheia */
 .ra-foto {
   position: fixed;
   inset: 0;
@@ -1988,28 +2209,38 @@ model-viewer[ar-status='object-placed'] .ra-arui {
 .ra-foto[data-facing='user'] .ra-foto__cam {
   transform: scaleX(-1);
 }
+/* camada do toque (arrastar e pinçar) e, dentro dela, a VIDA: um quadrado posto na tela pela homografia (matrix3d) que o
+   ra.js calcula a cada giro do celular (criarAncora) */
 .ra-foto__vida {
   position: absolute;
   inset: 0;
+  overflow: hidden;
 }
 .ra-foto__vida model-viewer {
   position: absolute;
   left: 0;
   top: 0;
-  width: 100%;
-  height: 100%;
+  width: 300px;
+  height: 300px;
+  transform-origin: 0 0;
+  will-change: transform;
+  pointer-events: none;
   background: transparent;
   --poster-color: transparent;
   --progress-bar-color: transparent;
 }
-/* lugar da pessoa: tracejado ao lado da VIDA enquanto ela chama */
+/* lugar da pessoa: tracejado ao lado da VIDA enquanto ela chama (caixa de uma pessoa de 1,6 m no mesmo chão, projetada) */
 .ra-foto__lado {
   position: absolute;
-  bottom: 14%;
-  width: 34%;
-  height: 58%;
-  border: 2px dashed rgb(243 240 231 / 0.75);
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  border: 2px dashed rgb(243 240 231 / 0.9);
   border-radius: 48% 48% 18px 18px;
+  /* 13/10 (verificação r1): sobre câmera clara (piso, céu) o tracejado creme sumia (contraste 1,14:1) — contorno escuro
+     por fora e por dentro */
+  box-shadow: 0 0 0 2px rgb(9 15 13 / 0.45), inset 0 0 0 2px rgb(9 15 13 / 0.45);
   display: grid;
   place-items: end center;
   padding-bottom: 14px;
@@ -2024,6 +2255,11 @@ model-viewer[ar-status='object-placed'] .ra-arui {
 .ra-foto[data-fase='chamar'] .ra-foto__lado,
 .ra-foto[data-fase='espera'] .ra-foto__lado {
   opacity: 1;
+}
+.ra-foto__lado span {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgb(9 15 13 / 0.62);
 }
 .ra-foto__flash {
   position: absolute;
@@ -2054,14 +2290,25 @@ model-viewer[ar-status='object-placed'] .ra-arui {
   justify-content: space-between;
   gap: 12px;
 }
-.ra-foto__tag {
-  margin: 0;
-  padding: 6px 14px;
+.ra-foto__pill {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 0;
   border-radius: 999px;
-  background: rgb(9 15 13 / 0.6);
+  /* 13/10 (verificação r2): 0,6 → 0,72 (contraste 4,46:1 no pior caso, sobre câmera clara) */
+  background: rgb(9 15 13 / 0.72);
   color: var(--cream);
+  font: inherit;
   font-size: 0.95rem;
   font-weight: 600;
+  cursor: pointer;
+}
+/* entrada e preparação: só o fechar */
+.ra-foto[data-fase='inicio'] .ra-foto__pill,
+.ra-foto[data-fase='inicio'] [data-foto-flip],
+.ra-foto[data-fase='preparando'] .ra-foto__pill,
+.ra-foto[data-fase='preparando'] [data-foto-flip] {
+  visibility: hidden;
 }
 .ra-foto__ic {
   display: grid;
@@ -2109,8 +2356,44 @@ model-viewer[ar-status='object-placed'] .ra-arui {
   font-style: italic;
   font-size: clamp(5rem, 22vw, 9rem);
   line-height: 1;
-  text-shadow: 0 4px 24px rgb(0 0 0 / 0.45);
+  /* 13/10 (verificação r1): contorno escuro — só a sombra suave sumia sobre céu claro */
+  text-shadow: 0 0 2px rgb(0 0 0 / 0.9), 0 0 10px rgb(0 0 0 / 0.55), 0 4px 24px rgb(0 0 0 / 0.45);
   pointer-events: none;
+}
+/* legenda de cada fala, sempre na tela enquanto ela fala (se o som falhar, ela “fala” por escrito) */
+.ra-foto__legenda {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(22px, env(safe-area-inset-bottom)) + 80px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: rgb(9 15 13 / 0.78);
+  color: var(--cream);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}
+.ra-foto__legenda:empty {
+  display: none;
+}
+/* na prévia (“Ficou demais!”), a legenda vai para cima, à frente da foto */
+.ra-foto[data-foto-pronta] .ra-foto__legenda {
+  z-index: 3;
+  top: calc(max(12px, env(safe-area-inset-top)) + 62px);
+  bottom: auto;
+}
+/* na prévia: só o fechar no topo; e os botões de baixo somem (13/10, verificação r1: reabilitados no fim do “Ficou
+   demais!”, apareciam como fantasmas atrás do painel da prévia) */
+.ra-foto[data-foto-pronta] .ra-foto__pill,
+.ra-foto[data-foto-pronta] [data-foto-flip],
+.ra-foto[data-foto-pronta] .ra-foto__bottom {
+  visibility: hidden;
 }
 .ra-foto__bottom {
   position: absolute;
@@ -2119,7 +2402,133 @@ model-viewer[ar-status='object-placed'] .ra-arui {
   bottom: max(22px, env(safe-area-inset-bottom));
   display: flex;
   justify-content: center;
+  gap: 10px;
   padding: 0 16px;
+}
+.ra-foto__ouvir {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 64px;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(9 15 13 / 0.72);
+  color: var(--cream);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 620;
+  cursor: pointer;
+}
+.ra-foto__ouvir .ra-ico {
+  width: 1.4em;
+  height: 1.4em;
+}
+.ra-foto__ouvir[disabled] {
+  opacity: 0;
+  pointer-events: none;
+}
+/* depois do “Quer tirar uma foto comigo?”, o “Tirar a foto” chama a atenção */
+.ra-foto__shoot.is-hint {
+  animation: ra-hint 1.3s var(--ease) 3;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ra-foto__shoot.is-hint {
+    animation: none;
+  }
+}
+/* entrada: “Começar” (um toque libera som, movimento e câmera) */
+.ra-foto__inicio {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: calc(max(12px, env(safe-area-inset-top)) + 60px) 16px max(22px, env(safe-area-inset-bottom));
+  background: radial-gradient(120% 80% at 50% 18%, #2c4a36, var(--bg-deep) 72%);
+}
+.ra-foto__inicio[hidden] {
+  display: none;
+}
+.ra-foto__cartao {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+.ra-foto__titulo {
+  margin: 0 0 10px;
+  font-family: var(--serif);
+  font-size: clamp(2rem, 9vw, 2.6rem);
+  line-height: 1.05;
+  color: var(--cream);
+}
+.ra-foto__texto {
+  margin: 0 0 22px;
+  color: var(--text-2);
+}
+.ra-foto__comecar {
+  min-height: 60px;
+  padding: 14px 44px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e7c07c, var(--amber));
+  color: var(--bg-deep);
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  box-shadow: 0 14px 40px -12px rgb(0 0 0 / 0.6);
+  cursor: pointer;
+}
+.ra-foto__nota {
+  margin: 16px 0 0;
+  color: var(--text-2);
+  font-size: 0.95rem;
+  text-align: center;
+}
+/* 13/10 (verificação r2): o ícone na linha do texto (com o texto em duas linhas, ele ficava solto na margem esquerda) */
+.ra-foto__nota .ra-ico {
+  display: inline-block;
+  width: 1.3em;
+  height: 1.3em;
+  margin-right: 6px;
+  vertical-align: -0.3em;
+  color: var(--amber);
+}
+/* 13/10 (verificação r1): o aviso de app vem ANTES do “Começar” (dentro de app o certo é sair primeiro) */
+.ra-foto__cartao .ra-app {
+  margin: 0 0 22px;
+}
+/* ?calibrar=1: régua do campo de visão e da altura do celular */
+/* 13/10 (verificação r1): no alto, no lugar da mensagem — embaixo ele cobria o corpo e os pés da VIDA, justamente o que se
+   olha para calibrar */
+.ra-foto__calib {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  right: 16px;
+  top: calc(max(12px, env(safe-area-inset-top)) + 64px);
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgb(9 15 13 / 0.72);
+  color: var(--cream);
+  font-size: 0.9rem;
+}
+/* calibrando, a mensagem do alto sai (o painel fica no lugar dela) */
+.ra-foto[data-calibrar] .ra-foto__msg {
+  display: none;
+}
+.ra-foto__calib input {
+  width: 100%;
+  height: 32px;
+  margin: 0;
+}
+.ra-foto__calib p {
+  margin: 0;
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 0.8rem;
 }
 .ra-foto__shoot {
   display: flex;
@@ -2160,10 +2569,38 @@ model-viewer[ar-status='object-placed'] .ra-arui {
   display: none;
 }
 .ra-foto__prev img {
+  min-height: 0;
   max-width: 100%;
-  max-height: calc(100% - 96px);
+  max-height: calc(100% - 150px);
   border-radius: 14px;
   box-shadow: 0 18px 50px -16px rgb(0 0 0 / 0.8);
+  /* iPhone: tocar e segurar a foto → “Adicionar às Fotos” */
+  -webkit-touch-callout: default;
+  -webkit-user-select: auto;
+  user-select: auto;
+  touch-action: auto;
+}
+.ra-foto__aviso {
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgb(127 181 147 / 0.18);
+  color: var(--cream);
+  font-weight: 620;
+  text-align: center;
+}
+.ra-foto__aviso[hidden] {
+  display: none;
+}
+.ra-foto__dica {
+  max-width: 380px;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.9rem;
+  text-align: center;
+}
+.ra-foto__dica:empty {
+  display: none;
 }
 .ra-foto__prev-do {
   display: flex;

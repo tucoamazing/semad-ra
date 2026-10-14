@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>A VIDA no chão — teste</title>
+<meta name="robots" content="noindex">
+<meta name="description" content="Protótipo: a VIDA presa no chão de verdade pelo rastreamento do 8th Wall (SLAM), dentro do navegador.">
+<link rel="stylesheet" href="vida-slam.css">
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
+<!-- motor de RA (rastreamento do chão): 8th Wall Engine, binário distribuído — © Niantic Spatial, Inc. -->
+<script src="./vendor/8thwall/xr.js" async data-preload-chunks="slam"></script>
+</head>
+<body>
+<canvas id="ra" aria-label="Câmera com a VIDA no chão"></canvas>
+
+<section id="entrada" class="tela">
+  <div class="cartao">
+    <h1>A VIDA no seu mundo</h1>
+    <p>Aponte o celular para o chão. A VIDA vai aparecer ali, em pé, e falar com você.</p>
+    <p class="dica">Aumente o volume. Vamos pedir para usar a câmera e o movimento do celular.</p>
+    <button id="comecar" class="btn principal" type="button">Começar</button>
+    <p id="carregando" class="dica" aria-live="polite">Carregando…</p>
+  </div>
+</section>
+
+<div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
+<div id="numero" class="numero" aria-hidden="true" hidden></div>
+
+<nav id="barra" class="barra" hidden>
+  <button id="ouvir" class="btn" type="button">Ouvir a VIDA</button>
+  <button id="foto" class="btn principal" type="button">📸 Foto com a VIDA</button>
+  <button id="frente" class="btn leve" type="button">Trazer para perto</button>
+</nav>
+
+<section id="previa" class="tela previa" hidden>
+  <img id="previa-img" alt="Sua foto com a VIDA">
+  <p id="previa-aviso" class="dica" aria-live="polite"></p>
+  <div class="acoes">
+    <button id="salvar" class="btn principal" type="button">Salvar</button>
+    <button id="compartilhar" class="btn" type="button">Compartilhar</button>
+    <button id="outra" class="btn leve" type="button">Tirar outra</button>
+  </div>
+</section>
+<p id="legenda" class="legenda" aria-live="polite" hidden></p>
+
+<p class="credito"><a href="./vendor/8thwall/LICENSE" target="_blank" rel="noopener">Rastreamento: 8th Wall Engine © Niantic Spatial, Inc. — licença e isenção de garantias</a></p>
+
+<script type="module" src="vida-slam.js"></script>
+</body>
+</html>

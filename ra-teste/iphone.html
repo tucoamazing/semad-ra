@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Teste RA no iPhone</title>
+<!--
+  TESTE (14/10) — não é página de produção. Responde, num iPhone de verdade, se o App Clip Needle Go dá à NOSSA página
+  (model-viewer 4.3.1 em modo 'webxr', a mesma VIDA, a mesma voz) o chão de verdade do ARKit — e se a foto com a câmera
+  sai pela ponte nativa dele (window.NeedleGoNativeScreenshot: a página manda a camada 3D transparente em PNG e o App
+  Clip põe o quadro da câmera atrás; “share” abre o menu de compartilhar do iOS sem precisar de um 2º toque).
+  Fonte da ponte: código do Needle Engine 6.0.0-alpha.6, src/engine/engine_utils_screenshot.needlego.ts.
+  Onde pôr (HTTPS público; o App Clip não abre arquivo local): ar-site/teste-appclip.html — usa assets/model-viewer.min.js,
+  media/3d/ar/vida.glb e media/audio/vida-ola.mp3, que já estão no site.
+  Abrir no iPhone: https://appclip.needle.tools/ar?url=<endereço desta página> (o botão abaixo monta o link).
+-->
+<script type="module" src="../assets/model-viewer.min.js?v=4.3.1"></script>
+<style>
+  :root { --bg: #f3f0e7; --ink: #0d1a14; --mute: #4b5a52; --line: #c9c3b3; --ok: #1d6b3a; --bad: #9a2b1f; --btn: #0d3b26; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0d1512; --ink: #ece8dc; --mute: #a8b3ab; --line: #2c3a33; --ok: #6fd39a; --bad: #ff8f80; --btn: #2f7d55; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.45 -apple-system, system-ui, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 1.3rem; margin: 0 0 8px; }
+  p { margin: 0 0 10px; }
+  .caixa { border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin: 14px 0; }
+  button, .botao { display: block; text-align: center; text-decoration: none; appearance: none; border: 0; border-radius: 999px; background: var(--btn); color: #fff; font: inherit; font-weight: 650; padding: 12px 18px; min-height: 48px; width: 100%; margin: 8px 0; }
+  button.sec { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  model-viewer { width: 100%; height: 340px; background: transparent; --poster-color: transparent; }
+  .ra-ui { position: absolute; left: 12px; right: 12px; bottom: max(16px, env(safe-area-inset-bottom)); display: none; gap: 8px; }
+  model-viewer[ar-status="session-started"] .ra-ui, model-viewer[ar-status="object-placed"] .ra-ui { display: grid; }
+  .ra-ui button { margin: 0; background: rgb(9 15 13 / 0.78); }
+  .ra-ui img { max-width: 40%; border-radius: 10px; border: 2px solid #fff; justify-self: end; }
+  .ok { color: var(--ok); font-weight: 700; } .bad { color: var(--bad); font-weight: 700; }
+  #checks { list-style: none; padding: 0; margin: 0; font-size: 0.95rem; }
+  #checks li { padding: 4px 0; border-bottom: 1px dashed var(--line); overflow-wrap: anywhere; }
+  #log { white-space: pre-wrap; font: 13px/1.4 ui-monospace, Menlo, monospace; background: rgb(0 0 0 / 0.05); border-radius: 10px; padding: 10px; max-height: 360px; overflow: auto; overflow-wrap: anywhere; }
+  #fotoFinal { width: 100%; border-radius: 12px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Teste: a VIDA no chão de verdade, no iPhone</h1>
+  <p>Duas formas que usam a RA da própria Apple (ARKit), que trava no chão e acerta o tamanho. Teste as duas e me diga qual ficou presa no chão e qual falou.</p>
+  <div class="caixa">
+    <p><b>A) RA da Apple + nossa página (App Clip “Needle Go”)</b> — a página inteira (voz, botões, foto) dentro da RA da Apple.</p>
+  </div>
+  <div class="caixa" id="foraClip" hidden>
+    <p><b>Você está no Safari.</b> Toque abaixo: o iPhone mostra o cartão do <b>Needle Go</b> — toque em <b>Abrir</b>. A página volta lá dentro.</p>
+    <a class="botao" id="abrirClip" href="#">Abrir no Needle Go</a>
+  </div>
+  <div class="caixa">
+    <p>1. Tire do silencioso. 2. Toque em <b>Começar a RA</b>. 3. Aponte para o chão e mexa o celular devagar até a VIDA aparecer. 4. Lá dentro: <b>Ouvir</b>, depois <b>Foto</b>. 5. Saia da RA e toque em <b>Copiar o resultado</b>.</p>
+    <button type="button" id="comecar">Começar a RA</button>
+  </div>
+  <model-viewer id="mv" src="../media/3d/ar/vida.glb" alt="VIDA (teste)" ar ar-modes="webxr" ar-placement="floor" ar-scale="fixed"
+    camera-controls autoplay animation-name="idle" shadow-intensity="1" environment-image="neutral" touch-action="pan-y">
+    <button slot="ar-button" hidden></button>
+    <div class="ra-ui">
+      <button type="button" id="raVisto">Estou vendo este botão na RA</button>
+      <button type="button" id="raOuvir">Ouvir</button>
+      <button type="button" id="raFoto">📸 Foto (3, 2, 1)</button>
+      <img id="raMini" alt="" hidden>
+    </div>
+  </model-viewer>
+  <div class="caixa">
+    <p><b>B) RA da Apple direto (Quick Look)</b> — tire do silencioso, toque no desenho abaixo e depois em “Ver em RA”. Ela aparece no chão; <b>toque nela</b> para a sequência da foto (o tracejado “Fique aqui” aparece no chão); o botão branco redondo tira a foto direto nas Fotos.</p>
+    <a rel="ar" id="ql" href="vida-fique-aqui-chao.usdz#allowsContentScaling=0"><img src="../media/poster/vida.webp" alt="Abrir a VIDA na RA da Apple" style="width:100%;border-radius:12px"></a>
+  </div>
+  <div class="caixa">
+    <p><b>Resultado técnico</b> (se der problema, toque em “Copiar o resultado” e me mande):</p>
+    <ul id="checks"></ul>
+    <img id="fotoFinal" alt="Foto composta pelo App Clip" hidden>
+    <button type="button" class="sec" id="copiar">Copiar o resultado</button>
+    <div id="log"></div>
+  </div>
+  <audio id="voz" playsinline preload="auto" src="../media/audio/vida-ola.mp3"></audio>
+</main>
+<script>
+(function () {
+  'use strict'
+  var t0 = performance.now()
+  var linhas = []
+  var mv = document.getElementById('mv')
+  var voz = document.getElementById('voz')
+  function log(s) {
+    linhas.push(((performance.now() - t0) / 1000).toFixed(2) + ' ' + s)
+    document.getElementById('log').textContent = linhas.join('\n')
+  }
+  function check(rotulo, valor, bom) {
+    var li = document.createElement('li')
+    li.innerHTML = rotulo + ': <span class="' + (bom ? 'ok' : 'bad') + '"></span>'
+    li.lastChild.textContent = String(valor)
+    document.getElementById('checks').appendChild(li)
+    log('CHECK ' + rotulo + ' = ' + valor)
+  }
+
+  var ua = navigator.userAgent
+  var noClip = /NeedleAppClip\//i.test(ua)
+  if (!noClip) {
+    document.getElementById('foraClip').hidden = false
+    document.getElementById('abrirClip').href = 'https://appclip.needle.tools/ar?url=' + encodeURIComponent(location.href.split('#')[0])
+  }
+  check('userAgent', ua, true)
+  check('dentro do Needle Go (UA “NeedleAppClip/”)', noClip, noClip)
+  check('navigator.xr', !!navigator.xr, !!navigator.xr)
+  // a porta de entrada do model-viewer (lida UMA vez, quando o script dele carrega): XRSession com requestHitTestSource
+  var portaMV = !!(navigator.xr && self.XRSession && navigator.xr.isSessionSupported && self.XRSession.prototype.requestHitTestSource)
+  check('XRSession + requestHitTestSource (o model-viewer exige)', portaMV, portaMV)
+  check('XRWebGLBinding / XRWebGLLayer', (typeof XRWebGLBinding) + ' / ' + (typeof XRWebGLLayer), typeof XRWebGLLayer !== 'undefined')
+  check('ponte de foto NeedleGoNativeScreenshot', typeof window.NeedleGoNativeScreenshot, typeof window.NeedleGoNativeScreenshot === 'function')
+  check('navigator.audioSession', navigator.audioSession ? navigator.audioSession.type + '/' + navigator.audioSession.state : 'não', !!navigator.audioSession)
+  if (navigator.xr) {
+    navigator.xr.addEventListener && navigator.xr.addEventListener('sessiongranted', function () { log('EVENTO sessiongranted (o App Clip já liberou a RA)') })
+    navigator.xr.isSessionSupported('immersive-ar').then(function (s) { check('isSessionSupported("immersive-ar")', s, s) }, function (e) { check('isSessionSupported("immersive-ar")', 'erro ' + e, false) })
+  }
+  customElements.whenDefined('model-viewer').then(function () {
+    mv.addEventListener('load', function () { check('model-viewer carregou a VIDA', true, true); check('mv.canActivateAR (modo webxr)', mv.canActivateAR, mv.canActivateAR) })
+  })
+  var falou = false
+  mv.addEventListener('ar-status', function (e) {
+    log('ar-status ' + e.detail.status)
+    if (e.detail.status === 'object-placed' && !falou) {
+      falou = true
+      voz.currentTime = 0
+      voz.play().then(function () { log('Olá ao pousar: tocando') }, function (er) { log('Olá ao pousar: recusado ' + er) })
+      try { mv.animationName = 'fala-ola'; mv.play({ repetitions: 1 }) } catch (er) {}
+    }
+  })
+  mv.addEventListener('ar-tracking', function (e) { log('ar-tracking ' + e.detail.status) })
+  ;['play', 'playing', 'pause', 'ended', 'error'].forEach(function (t) { voz.addEventListener(t, function () { log('voz:' + t + ' em ' + voz.currentTime.toFixed(2) + ' s') }) })
+  document.addEventListener('visibilitychange', function () { log('visibilidade ' + document.visibilityState) })
+
+  document.getElementById('comecar').addEventListener('click', function () {
+    // tudo DENTRO do toque: som liberado (play mudo), sessão de áudio, RA
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback' } catch (e) {}
+    voz.muted = true
+    var p = voz.play()
+    if (p && p.then) p.then(function () { voz.pause(); voz.currentTime = 0; voz.muted = false; log('som liberado') }, function (e) { log('som recusado ' + e) })
+    try { mv.activateAR(); log('activateAR chamado') } catch (e) { log('activateAR erro ' + e) }
+  })
+  document.getElementById('raVisto').addEventListener('click', function () { log('OVERLAY: os botões aparecem e respondem dentro da RA') ; this.textContent = 'Anotado ✓' })
+  document.getElementById('raOuvir').addEventListener('click', function () {
+    voz.currentTime = 0
+    voz.play().then(function () { log('Ouvir: tocando') }, function (e) { log('Ouvir: recusado ' + e) })
+    try { mv.animationName = 'fala-ola'; mv.currentTime = 0; mv.play({ repetitions: 1 }) } catch (e) {}
+  })
+
+  // camada 3D de TESTE (PNG transparente): um alvo e um texto no meio da tela — se a foto voltar com a câmera atrás,
+  // a ponte funciona; na página de verdade esta camada seria a VIDA desenhada com a câmera XR do mesmo quadro
+  function camadaTeste() {
+    var c = document.createElement('canvas')
+    c.width = Math.round(innerWidth * Math.min(2, devicePixelRatio))
+    c.height = Math.round(innerHeight * Math.min(2, devicePixelRatio))
+    var g = c.getContext('2d')
+    var r = c.width * 0.18
+    g.lineWidth = r * 0.12
+    g.strokeStyle = 'rgba(243,240,231,0.95)'
+    g.setLineDash([r * 0.25, r * 0.18])
+    g.beginPath(); g.arc(c.width / 2, c.height / 2, r, 0, Math.PI * 2); g.stroke()
+    g.setLineDash([])
+    g.fillStyle = '#f3f0e7'
+    g.font = '700 ' + Math.round(r * 0.32) + 'px -apple-system, sans-serif'
+    g.textAlign = 'center'
+    g.fillText('Foto com a VIDA (teste)', c.width / 2, c.height / 2 + r * 1.5)
+    return c.toDataURL('image/png')
+  }
+  var ultimaComposta = null
+  var fotoPronta = false
+  document.getElementById('raFoto').addEventListener('click', function () {
+    var b = this, n = 3
+    var bridge = window.NeedleGoNativeScreenshot
+    if (typeof bridge !== 'function') { log('FOTO: sem a ponte NeedleGoNativeScreenshot aqui'); return }
+    if (fotoPronta) {
+      // o menu de compartilhar nativo (Salvar imagem, Instagram, WhatsApp) — sem pedir 2º toque
+      bridge({ image: camadaTeste(), action: 'share', title: 'Foto com a VIDA', text: 'Eu e a VIDA, da Semad' }).then(function (r) { log('SHARE: ' + JSON.stringify(r)) }, function (e) { log('SHARE erro ' + e) })
+      return
+    }
+    var tick = setInterval(function () {
+      b.textContent = n > 0 ? String(n) : 'Xis!'
+      if (n-- > 0) return
+      clearInterval(tick)
+      var t = performance.now()
+      bridge({ image: camadaTeste(), action: 'return', mimeType: 'image/jpeg', quality: 0.95 }).then(function (res) {
+        log('FOTO: voltou em ' + Math.round(performance.now() - t) + ' ms, ' + (res && res.image ? Math.round(res.image.length * 0.75 / 1024) + ' KB ' + res.mimeType : JSON.stringify(res)))
+        if (res && res.image) {
+          ultimaComposta = res.image
+          var mini = document.getElementById('raMini'); mini.src = res.image; mini.hidden = false
+          var f = document.getElementById('fotoFinal'); f.src = res.image; f.hidden = false
+          var img = new Image()
+          img.onload = function () { log('FOTO: ' + img.naturalWidth + ' × ' + img.naturalHeight + ' px') }
+          img.src = res.image
+        }
+        fotoPronta = true
+        b.textContent = '📸 Compartilhar a foto'
+      }, function (e) { log('FOTO erro ' + e); b.textContent = '📸 Foto (3, 2, 1)' })
+    }, 900)
+  })
+  document.getElementById('copiar').addEventListener('click', function () {
+    var t = linhas.join('\n')
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(function () {})
+    this.textContent = 'Copiado — cole na conversa'
+  })
+})()
+</script>
+</body>
+</html>

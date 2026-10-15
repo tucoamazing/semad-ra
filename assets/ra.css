@@ -389,6 +389,13 @@ body[data-model='error'] .ra-status {
   cursor: not-allowed;
 }
 
+/* 14/10: a RA está abrindo — o toque seguinte é ignorado até ela cobrir a página (abrirRA, no ra.js) */
+[data-ar-launch][aria-busy='true'],
+[data-foto-open][aria-busy='true'] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 .ra-ar-btn:focus-visible {
   outline-offset: 4px;
   border-radius: 999px;
@@ -1891,6 +1898,10 @@ body[data-ar='yes'] .ra-cta {
   justify-items: start;
   margin: 2px 0 4px;
 }
+/* 15/10: no iPhone com Quick Look o botão principal já abre a RA da Apple — o chip ficaria repetido */
+.ra-ql[data-ql-redundante] {
+  display: none;
+}
 .ra-ql[hidden] {
   display: none;
 }
@@ -2011,46 +2022,66 @@ model-viewer[ar-status='object-placed'] .ra-arui {
 .ra-arui__msg:empty {
   display: none;
 }
-/* 13/10: 📸 dentro da RA — redondo, só com o ícone, numa linha própria acima dos dois botões, como o disparador de uma
-   câmera (medido: os três numa linha pediam 418 px num celular de 390). Sai da RA e abre “A VIDA no seu mundo” já com a
-   sequência (ou, com ?camacc=1, tira a foto sem sair dela). Os dois botões com texto não quebram linha; em tela estreita
-   (360 px) ficam mais justos */
+/* 14/10: tudo numa RA só — “Ouvir a VIDA” e “Tirar a foto” numa linha (o 📸 redondo, que saía da RA para a tela “A VIDA no
+   seu mundo”, foi tirado). Os dois não quebram linha; em tela estreita (360 px) ficam mais justos. Depois da 1ª foto o
+   botão vira “Tirar outra” */
 .ra-arui__btn {
   white-space: nowrap;
 }
-.ra-arui__btn:disabled,
-.ra-arui__ja:disabled {
+.ra-arui__btn:disabled {
   opacity: 0.55;
 }
-.ra-arui__ja {
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: #f6f1e6;
-  font-size: 1.75rem;
-  line-height: 1;
-  box-shadow:
-    0 0 0 4px rgb(246 241 230 / 0.35),
-    0 10px 24px -10px rgb(0 0 0 / 0.6);
-  pointer-events: auto;
-}
-.ra-arui__ja:focus-visible {
-  outline: 2px solid var(--amber);
-  outline-offset: 5px;
-}
-/* 13/10 (verificação r2): rótulo curto sob o 📸 — ao lado do “Foto com a VIDA” (que pede um print), eram dois botões de foto
-   com resultados diferentes; este sai da RA e salva sozinho */
-.ra-arui__ja-t {
-  margin-top: -4px;
+/* 14/10: a instrução da foto no alto (“Fique no tracejado…”, “Agora tire um print…”); a legenda da fala segue embaixo */
+.ra-arui__dica {
+  position: fixed;
+  left: 50%;
+  top: calc(max(12px, env(safe-area-inset-top)) + 64px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: rgb(9 15 13 / 0.8);
   color: var(--cream);
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-shadow: 0 0 2px rgb(0 0 0 / 0.9), 0 1px 8px rgb(0 0 0 / 0.6);
+  font-size: 1.0625rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+  text-wrap: balance;
   pointer-events: none;
+}
+.ra-arui__dica:empty {
+  display: none;
+}
+/* 14/10: 3 / 2 / 1 / Xis! grandes, como no modo foto — um pouco acima do meio (a 36 % cobria o chapéu dela com a VIDA e o
+   lugar ao lado enquadrados) */
+.ra-arui__conta {
+  position: fixed;
+  left: 50%;
+  top: 25%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  color: #fff;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(5rem, 22vw, 9rem);
+  line-height: 1;
+  text-shadow: 0 0 2px rgb(0 0 0 / 0.9), 0 0 10px rgb(0 0 0 / 0.55), 0 4px 24px rgb(0 0 0 / 0.45);
+  pointer-events: none;
+}
+.ra-arui__conta:empty {
+  display: none;
+}
+/* 14/10: sem a câmera na RA, o print — os botões e a legenda saem da frente (o print pega a tela inteira) */
+.ra-arui[data-fase='print'] .ra-arui__row,
+.ra-arui[data-fase='print'] .ra-arui__msg,
+.ra-arui[data-fase='print'] .ra-arui__foto {
+  visibility: hidden;
+}
+/* 14/10 (verificação): e o X da RA (o botão de sair do model-viewer) também — ele entrava no print da pessoa */
+model-viewer[data-ra-print]::part(default-exit-webxr-ar-button) {
+  visibility: hidden;
 }
 @media (max-width: 380px) {
   .ra-arui__row {
@@ -2062,7 +2093,7 @@ model-viewer[ar-status='object-placed'] .ra-arui {
     font-size: 0.9375rem;
   }
 }
-/* ?camacc=1: a foto tirada dentro da RA — miniatura + aviso + Compartilhar */
+/* a foto tirada dentro da RA (14/10: por padrão) — miniatura + aviso + Compartilhar */
 .ra-arui__foto {
   display: flex;
   align-items: center;
@@ -2639,4 +2670,32 @@ model-viewer[ar-status='object-placed'] .ra-arui {
 html.ra-foto-aberta,
 html.ra-foto-aberta body {
   overflow: hidden;
+}
+/* 14/10: a foto da RA do Android na própria página (quando o “Compartilhar” precisou sair da RA) */
+.ra-previa {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: calc(max(12px, env(safe-area-inset-top)) + 60px) 16px max(22px, env(safe-area-inset-bottom));
+  background: rgb(9 15 13);
+}
+.ra-previa[hidden] {
+  display: none;
+}
+.ra-previa__x {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: 12px;
+}
+.ra-previa__img {
+  min-height: 0;
+  max-width: 100%;
+  max-height: calc(100% - 150px);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px -16px rgb(0 0 0 / 0.8);
 }

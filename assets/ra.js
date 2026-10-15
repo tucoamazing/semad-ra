@@ -144,6 +144,62 @@
     }
   }
 
+  // 14/10 (verificação): a RA de verdade abre UMA vez por toque. A sessão imersiva do WebXR é exclusiva: um 2º
+  // requestSession com outra aberta OU AINDA PENDENTE é recusado (InvalidStateError, como manda a especificação) e o
+  // model-viewer 4.3.1 trata isso como falha da RA — fecha a 1ª sessão (stopPresenting), desliga o WebXR até a página
+  // recarregar e tenta o Scene Viewer (outro app, sem a voz); depois disso, “Tirar uma foto com a VIDA” caía na tela do
+  // giroscópio. O 2º toque em “Tirar uma foto com a VIDA” ou em “Ver no meu espaço” antes de a RA cobrir a página (o ARCore
+  // leva 0,6–1,5 s para abrir e o activateAR ainda espera o modelo carregar) fazia isso. Agora o pedido é um só: com a RA
+  // aberta (ar-status session-started/object-placed) ou abrindo (o activateAR ainda não terminou), o toque é ignorado, a
+  // página diz que a RA está abrindo e os botões ficam “ocupados” (aria-busy). O “abrindo” cai quando o activateAR termina
+  // (a sessão abriu ou falhou) — NÃO por tempo: soltar antes, com o pedido ainda pendente, devolveria o defeito (teste H2:
+  // sessão de 7 s e 2º toque aos 6,5 s). A reserva de 20 s só existe para um pedido que nunca termine.
+  // Teste: scripts/ra-foto-ra.mjs --only H (o simulador agora recusa a 2ª sessão, como o navegador).
+  function raAbrindo(mv) {
+    var em = mv.__raAbrindoEm || 0
+    return em > 0 && performance.now() - em < 20000
+  }
+  function raOcupada(mv) {
+    return /session-started|object-placed/.test(mv.getAttribute('ar-status') || '') || raAbrindo(mv)
+  }
+  function marcaAbrindo(mv, on) {
+    mv.__raAbrindoEm = on ? performance.now() : 0
+    clearTimeout(mv.__raAbrindoT)
+    if (on) {
+      mv.__raAbrindoT = setTimeout(function () {
+        marcaAbrindo(mv, false)
+      }, 20000)
+    }
+    if (on) document.body.setAttribute('data-ar-abrindo', '')
+    else {
+      document.body.removeAttribute('data-ar-abrindo')
+      // o aviso do toque ignorado não fica para trás (a RA que caiu no Scene Viewer volta para a página)
+      if (status && status.textContent === 'Abrindo a realidade aumentada…') say('')
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ar-launch], [data-foto-open]'), function (b) {
+      if (on) b.setAttribute('aria-busy', 'true')
+      else b.removeAttribute('aria-busy')
+    })
+  }
+  // o activateAR com a trava: devolve a promessa dele, ou null quando o toque foi ignorado (RA aberta ou abrindo)
+  function abrirRA(mv) {
+    if (raOcupada(mv)) return null
+    marcaAbrindo(mv, true)
+    var tok = mv.__raAbrindoEm
+    var p
+    try {
+      p = mv.activateAR()
+    } catch (e) {
+      marcaAbrindo(mv, false)
+      throw e
+    }
+    function solta() {
+      if (mv.__raAbrindoEm === tok) marcaAbrindo(mv, false)
+    }
+    Promise.resolve(p).then(solta, solta)
+    return p
+  }
+
   function setupViewer(mv) {
     var launchers = document.querySelectorAll('[data-ar-launch]')
     var motion = document.querySelector('[data-motion]')
@@ -778,8 +834,10 @@
         // na RA (WebXR), a VIDA acena assim que é posicionada — ou, com a voz liberada pelo toque que abriu a RA, se
         // apresenta falando (setupFala)
         if (!(placedHook && placedHook())) playGesture(1)
-      } else if (s === 'not-presenting' && arExitHook) {
-        arExitHook()
+      } else if (s === 'not-presenting') {
+        // 14/10: o aviso do toque ignorado (“Abrindo…”) não fica na página depois da RA
+        if (status && status.textContent === 'Abrindo a realidade aumentada…') say('')
+        if (arExitHook) arExitHook()
       }
     })
 
@@ -797,9 +855,16 @@
         if (mundoHook && mundoHook(e)) return
         // confere de novo antes de dizer que a RA não abre (a detecção pode ter terminado depois da última checagem)
         check()
+        // 14/10 (verificação): a RA já está abrindo (ou aberta) — o 2º toque não pede outra sessão (abrirRA) nem chega ao
+        // setupFala (que calaria a fala e liberaria a voz de novo)
+        if (mv.canActivateAR && raOcupada(mv)) {
+          e.stopImmediatePropagation()
+          if (raAbrindo(mv)) say('Abrindo a realidade aumentada…')
+          return
+        }
         if (mv.canActivateAR) {
           // chamada direta, dentro do toque: o navegador exige o gesto para abrir a câmera
-          var p = mv.activateAR()
+          var p = abrirRA(mv)
           if (p && p.catch) {
             p.catch(function () {
               say(FAIL)
@@ -1331,6 +1396,11 @@
       })
     })
     api.onPlaced(function () {
+      // 14/10: a RA aberta pelo “Tirar uma foto com a VIDA” da página (Android): já começa a sequência da foto
+      if (fotoAoEntrar) {
+        fotoNaEntrada()
+        return true
+      }
       if (!primed) return false
       speak('ola', mainPlayer)
       return true
@@ -1338,7 +1408,11 @@
     // a RA chegou a abrir (session-started/object-placed): só então a saída dela volta ao laço sem mistura
     var raAberta = false
     mv.addEventListener('ar-status', function (e) {
-      if (/session-started|object-placed/.test((e.detail && e.detail.status) || '')) raAberta = true
+      var st = (e.detail && e.detail.status) || ''
+      if (/session-started|object-placed/.test(st)) raAberta = true
+      // (com movimento reduzido o setupViewer não chama o onPlaced: a foto pedida na entrada começa aqui)
+      if (st === 'object-placed' && fotoAoEntrar) fotoNaEntrada()
+      if (st === 'failed') fotoAoEntrar = false
     })
     api.onARExit(function () {
       stop()
@@ -1348,8 +1422,21 @@
       cancelAR(raAberta)
       if (raAberta) api.toLoopJa()
       raAberta = false
+      fotoAoEntrar = false
+      // 14/10: a marca do chão, a contagem e as instruções somem; o botão volta a “Tirar a foto”
+      marca.esconder(true)
+      faseRA('')
+      dicaRA('')
+      if (arConta) arConta.textContent = ''
+      if (fotoArRot) fotoArRot.textContent = 'Tirar a foto'
+      botoesFoto(false)
       if (arFoto) arFoto.hidden = true
       if (arFlash) arFlash.classList.remove('is-on')
+      // 14/10: o “Compartilhar” tirou a pessoa da RA (a RA fechou até 20 s depois do toque nele) ou não abriu dentro dela:
+      // a foto aparece na própria página
+      if (((compartilhouEm && performance.now() - compartilhouEm < 20000) || previaAoSair) && arFotoArq) mostrarPrevia()
+      compartilhouEm = 0
+      previaAoSair = false
     })
 
     function reducedPref() {
@@ -1364,9 +1451,14 @@
       }, 4000)
     }
 
-    // ---------------- foto na RA (WebXR). Por padrão a câmera não chega à página: “Foto com a VIDA” faz a sequência e a
-    // pessoa tira um print; o 📸 sai da RA e abre “A VIDA no seu mundo” já com a sequência (a foto baixa sozinha). Com
-    // ?camacc=1 (experimento, ver criarFotoRA) e a câmera na sessão, as duas tiram a foto no Xis SEM sair da RA
+    // ---------------- foto na RA (WebXR). 14/10 (retorno do dono: “tudo na mesma aba de realidade aumentada”; a tela
+    // separada da câmera saía “toda bugada, sem track”): a foto acontece INTEIRA dentro da RA. “Tirar a foto”: ela chama
+    // (“Oba! Vem aqui pro meu ladinho!”) e aparece no CHÃO, ao lado dela, a marca TRACEJADA “Fique aqui” (criarMarcaLado,
+    // presa à VIDA); espera; conta 3-2-1 nos dedos com os números grandes na tela; no Xis a marca some e a foto sai sem sair
+    // da RA (imagem da câmera + a VIDA do mesmo quadro + assinatura, com flash: criarFotoRA, 'camera-access' pedido por
+    // padrão), baixa direto (pasta Download, que a Galeria mostra) e aparece em miniatura com “Compartilhar”; o botão vira
+    // “Tirar outra”; ela diz “Ficou demais! Obrigada!”. Sem a câmera na sessão (recusada, sem suporte, auto-cura, ?camacc=0):
+    // a mesma sequência e, no Xis, “Agora tire um print (botões de ligar + volume)”. Nada abre outra tela.
     var arRun = 0
     // ja: a volta ao laço (se não houver gesto em curso) sem mistura — a página não está à vista (13/10, verificação r2)
     function cancelAR(ja) {
@@ -1374,22 +1466,66 @@
       api.setLoop(null, ja ? 1 : 0)
     }
     var fra = criarFotoRA(mv)
+    var marca = criarMarcaLado(mv, fra.interno)
+    // a marca nasce quando a RA abre (antes de a VIDA pousar e falar): o quadro pesado da criação fica onde não se vê
+    mv.addEventListener('ar-status', function (e) {
+      if (!(e.detail && e.detail.status === 'session-started')) return
+      setTimeout(function () {
+        if (api.inAR()) marca.preparar()
+      }, 60)
+    })
     // para os testes (scripts/ra-foto-ra.mjs)
+    fra.marca = marca
     mv.__fotoRA = fra
     var mundo = null
+    var aruiBox = mv.querySelector('[data-arui]')
     var fotoAr = mv.querySelector('[data-foto-ar]')
-    var fotoJa = mv.querySelector('[data-foto-ra-ja]')
+    var fotoArRot = mv.querySelector('[data-foto-ar-rotulo]')
+    var ouvirAr = mv.querySelector('.ra-arui [data-fala-play]')
     var arFoto = mv.querySelector('[data-arui-foto]')
     var arFlash = mv.querySelector('[data-arui-flash]')
+    var arConta = mv.querySelector('[data-arui-conta]')
+    var arDica = mv.querySelector('[data-arui-dica]')
     var arFotoArq = null
-    // 13/10 (verificação r1): a mensagem do print não leva mais o 📸 (é o ícone do botão logo abaixo, que FECHA a RA e
-    // recomeça a sequência em “A VIDA no seu mundo”): diz como tirar o print no Android
-    var PRINT_RA = 'Tire o print agora: aperte liga + volume −'
+    var arFotoUrl = null
+    var arFotoNome = ''
+    // a RA aberta pelo “Tirar uma foto com a VIDA” da página: a sequência começa quando ela pousa no chão
+    var fotoAoEntrar = false
+    // o “Compartilhar” de dentro da RA: quando foi tocado (a RA que fechar logo depois mostra a foto na página)
+    var compartilhouEm = 0
+    var previaAoSair = false
+    var PRINT_RA = 'Agora tire um print (botões de ligar + volume)'
+    // sem a câmera na RA: o aviso do print vem já na contagem — no Xis ele fica só 1,5 s (senão saía no próprio print)
+    var PRINT_ANTES = 'No “Xis!”, tire um print (botões de ligar + volume)'
+    var MSG_LADO = 'Fique no tracejado, ao lado da VIDA'
+    var MSG_TRAS = 'Dê uns passos para trás para ver o tracejado ao lado da VIDA'
+    function faseRA(f) {
+      if (aruiBox) aruiBox.setAttribute('data-fase', f || '')
+      // no print, o X da RA (do model-viewer) também sai da frente (CSS: model-viewer[data-ra-print]::part(…))
+      if (f === 'print') mv.setAttribute('data-ra-print', '')
+      else mv.removeAttribute('data-ra-print')
+    }
+    function dicaRA(t) {
+      if (arDica && arDica.textContent !== (t || '')) arDica.textContent = t || ''
+    }
     function botoesFoto(ocupado) {
       if (fotoAr) fotoAr.disabled = ocupado
-      if (fotoJa) fotoJa.disabled = ocupado
+      // durante a sequência, “Ouvir” cortaria a fala dela no meio da contagem
+      if (ouvirAr) ouvirAr.disabled = ocupado
     }
-    // a foto de dentro da RA (?camacc=1): flash, imagem da câmera + a VIDA do mesmo quadro, download, miniatura
+    function doisQuadrosRA() {
+      return new Promise(function (res) {
+        var t = setTimeout(res, 250)
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            clearTimeout(t)
+            res()
+          })
+        })
+      })
+    }
+    // a foto de dentro da RA: flash, imagem da câmera + a VIDA do mesmo quadro, download, miniatura (já decodificada: a
+    // prévia não trava o começo do “Ficou demais!” — 13/10, verificação r1)
     function tirarNaRA() {
       if (arFlash) arFlash.classList.add('is-on')
       function apaga() {
@@ -1404,39 +1540,144 @@
         try {
           arFotoArq = new File([r.blob], nome, { type: 'image/jpeg' })
         } catch (e) {}
-        if (arFoto) {
-          var im = arFoto.querySelector('[data-arui-foto-img]')
-          if (im) {
-            if (im.src) URL.revokeObjectURL(im.src)
-            im.src = URL.createObjectURL(r.blob)
-          }
-          var sh = arFoto.querySelector('[data-arui-foto-share]')
-          if (sh) sh.hidden = !(arFotoArq && navigator.canShare && navigator.canShare({ files: [arFotoArq] }))
+        if (arFotoUrl) URL.revokeObjectURL(arFotoUrl)
+        arFotoUrl = URL.createObjectURL(r.blob)
+        arFotoNome = nome
+        // o botão já diz “Tirar outra” junto com a miniatura (antes só no fim da contagem, ~1–2 s depois dela)
+        if (fotoArRot) fotoArRot.textContent = 'Tirar outra'
+        if (!arFoto) return r
+        var sh = arFoto.querySelector('[data-arui-foto-share]')
+        if (sh) sh.hidden = !(arFotoArq && navigator.canShare && navigator.canShare({ files: [arFotoArq] }))
+        var im = arFoto.querySelector('[data-arui-foto-img]')
+        if (!im) {
           arFoto.hidden = false
+          return r
         }
-        return r
+        im.src = arFotoUrl
+        var dec = im.decode ? im.decode().catch(function () {}) : Promise.resolve()
+        return dec.then(function () {
+          if (api.inAR()) arFoto.hidden = false
+          return r
+        })
       }, function (e) {
         apaga()
         throw e
       })
     }
+    // “Compartilhar” dentro da RA: o menu do Android, com o arquivo. Se ele não abrir por cima da RA (recusa que não é a
+    // pessoa cancelando) ou se a RA fechar com ele, a foto aparece na própria página com “Compartilhar” e “Salvar”
     var arFotoShare = arFoto && arFoto.querySelector('[data-arui-foto-share]')
+    // 14/10 (verificação): toque duplo em “Compartilhar” — o 2º chegava antes de o menu do Android cobrir a tela e o
+    // navegador o recusava (InvalidStateError: “an earlier share has not yet completed”, como manda o Web Share); a
+    // recusa era lida como “o menu não abre na RA” e a RA fechava com o menu ainda aberto. Agora: um menu por vez (o
+    // botão fica preso até o 1º terminar, no máximo 8 s) e InvalidStateError nunca tira a pessoa da RA
+    var compartilhando = false
     if (arFotoShare) {
       arFotoShare.addEventListener('click', function (e) {
         e.stopPropagation()
-        if (arFotoArq && navigator.share) navigator.share({ files: [arFotoArq], title: 'Eu e a VIDA', text: 'Foto com a VIDA · Expedição Parques GO' }).catch(function () {})
+        if (!arFotoArq || !navigator.share) return
+        if (compartilhando && performance.now() - compartilhouEm < 8000) return
+        compartilhando = true
+        compartilhouEm = performance.now()
+        var p
+        try {
+          p = navigator.share({ files: [arFotoArq], title: 'Eu e a VIDA', text: 'Foto com a VIDA · Expedição Parques GO' })
+        } catch (err) {
+          p = Promise.reject(err)
+        }
+        Promise.resolve(p).then(function () {
+          compartilhando = false
+          compartilhouEm = 0
+        }, function (err) {
+          compartilhando = false
+          // a pessoa fechou o menu: nada a fazer
+          if (err && err.name === 'AbortError') return
+          // outro menu ainda aberto (ou o documento sem foco): não é o menu recusando a RA
+          if (err && err.name === 'InvalidStateError') return
+          if (fra.naRA()) {
+            previaAoSair = true
+            fra.sair()
+          } else mostrarPrevia()
+        })
       })
     }
-    // a sequência dentro da RA: vem → espera → 3-2-1 → Xis → pose. comCamera: a foto sai sozinha no Xis (?camacc=1)
-    function fotoNaRA(comCamera) {
+    // a foto na própria página (depois da RA): sem câmera e sem outra tela — só a foto, “Compartilhar” e “Salvar”
+    var previa = document.querySelector('[data-ra-previa]')
+    function mostrarPrevia() {
+      if (!previa || !arFotoUrl) return
+      var im = previa.querySelector('[data-ra-previa-img]')
+      if (im) im.src = arFotoUrl
+      var sv = previa.querySelector('[data-ra-previa-save]')
+      if (sv) {
+        sv.href = arFotoUrl
+        sv.setAttribute('download', arFotoNome || nomeDaFoto())
+      }
+      var sh = previa.querySelector('[data-ra-previa-share]')
+      if (sh) sh.hidden = !(arFotoArq && navigator.canShare && navigator.canShare({ files: [arFotoArq] }))
+      previa.hidden = false
+      document.documentElement.classList.add('ra-foto-aberta')
+      var x = previa.querySelector('[data-ra-previa-close]')
+      if (x && x.focus) x.focus()
+    }
+    function fechaPrevia() {
+      if (!previa || previa.hidden) return
+      previa.hidden = true
+      document.documentElement.classList.remove('ra-foto-aberta')
+      var ab = document.querySelector('[data-foto-open]')
+      if (ab && ab.focus) ab.focus()
+    }
+    if (previa) {
+      var pvShare = previa.querySelector('[data-ra-previa-share]')
+      if (pvShare) {
+        pvShare.addEventListener('click', function () {
+          if (arFotoArq && navigator.share) navigator.share({ files: [arFotoArq], title: 'Eu e a VIDA', text: 'Foto com a VIDA · Expedição Parques GO' }).catch(function () {})
+        })
+      }
+      var pvX = previa.querySelector('[data-ra-previa-close]')
+      if (pvX) pvX.addEventListener('click', fechaPrevia)
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') fechaPrevia()
+      })
+    }
+    // 14/10 (verificação): onde ela pousa (~1,1 m do celular) a marca fica FORA da tela, nas 4 larguras medidas — a contagem
+    // seguia mesmo assim e o Xis vinha sem a pessoa no lugar. Agora, depois dos 2,6 s, a espera segura a contagem até a
+    // marca entrar na tela (quem segura o celular dá uns passos para trás: é o que a instrução do alto pede), por até 10 s
+    // a mais; sem projeção (a marca não foi criada), segue
+    function esperaEnquadrar(run) {
+      var t0 = performance.now()
+      return new Promise(function (res) {
+        ;(function confere() {
+          if (run !== arRun || !api.inAR()) return res()
+          var p = marca.projetar()
+          if (!p || p.naTela !== false || performance.now() - t0 > 10000) return res()
+          setTimeout(confere, 250)
+        })()
+      })
+    }
+    // a instrução do alto: se a marca do chão estiver fora da tela (a pessoa perto demais), pede uns passos para trás
+    function vigiaMarca(run) {
+      ;(function confere() {
+        if (run !== arRun) return
+        var f = aruiBox && aruiBox.getAttribute('data-fase')
+        if (f !== 'chamar' && f !== 'espera') return
+        var p = marca.projetar()
+        dicaRA(p && p.naTela === false ? MSG_TRAS : MSG_LADO)
+        setTimeout(confere, 400)
+      })()
+    }
+    // a sequência dentro da RA: vem (+ marca no chão) → espera → 3-2-1 → Xis (foto ou print) → “Ficou demais!” → idle
+    function fotoNaRA() {
       prime()
+      var comCamera = fra.comCamera()
       var run = ++arRun
       function alive() {
-        return run === arRun
+        return run === arRun && api.inAR()
       }
       var tiro = null
       function tira() {
         if (!tiro) {
+          // a marca some NO Xis, antes do disparo: nem a foto nem a tela daquele quadro a mostram
+          marca.esconder(true)
           tiro = tirarNaRA().then(function () {
             return true
           }, function () {
@@ -1447,19 +1688,35 @@
       }
       botoesFoto(true)
       if (arFoto) arFoto.hidden = true
+      if (arConta) arConta.textContent = ''
+      faseRA('chamar')
+      marca.mostrar()
+      dicaRA(MSG_LADO)
+      vigiaMarca(run)
+      // 14/10 (verificação): “Tirar a foto” no meio de uma fala (o “Olá” da chegada, o “Ouvir”): a troca para o “vem” com
+      // 450 ms — com 300 ms a mão direita girava 24,4° num quadro no começo dele
+      if (speaking && !speaking.voiceDone) mainPlayer.nextFade = 450
       speak('vem', mainPlayer)
         .then(function () {
           if (!alive()) return
-          if (arMsg) arMsg.textContent = 'Fique ao lado da VIDA…'
-          return wait(2600)
+          faseRA('espera')
+          return wait(2600).then(function () {
+            return esperaEnquadrar(run)
+          })
         })
         .then(function () {
           if (!alive()) return
+          faseRA('contagem')
+          // sem a câmera, a pessoa já sabe na contagem que o Xis é a hora do print
+          dicaRA(comCamera ? '' : PRINT_ANTES)
           var p = speak('contagem', mainPlayer, function (t, last) {
             var n = t < 3.1 ? -1 : t < 4.6 ? 3 : t < 6.6 ? 2 : t < 8.4 ? 1 : 0
-            if (n !== last && arMsg) arMsg.textContent = n > 0 ? String(n) + '…' : n === 0 ? (comCamera ? 'Xiiis! 📸' : 'Xiiis! Tire o print agora') : 'Preparados?'
-            // ?camacc=1: no Xis a foto sai sozinha (câmera + VIDA do mesmo quadro XR), sem sair da RA
-            if (n === 0 && comCamera && alive()) tira()
+            if (n !== last && arConta) arConta.textContent = n > 0 ? String(n) : n === 0 ? 'Xis!' : ''
+            // no Xis a foto sai sozinha (câmera + VIDA do mesmo quadro XR), sem sair da RA; sem a câmera, só a marca some
+            if (n === 0 && alive()) {
+              if (comCamera) tira()
+              else marca.esconder(true)
+            }
             return n
           })
           // 13/10: a pose vira o laço JÁ durante a contagem (inGesture = true: só marca). No fim da contagem
@@ -1472,53 +1729,122 @@
         .then(function () {
           if (!alive()) return
           if (!api.moving()) api.setLoop(cfg.pose)
-          if (!comCamera) {
-            if (arMsg) arMsg.textContent = PRINT_RA
-            return wait(7000)
-          }
+          if (arConta) arConta.textContent = ''
+          marca.esconder(true)
           // a deixa do Xis pode se perder (as deixas são conferidas a cada quadro e a fala pode acabar entre dois
-          // quadros lentos): a foto sai aqui, no fim da contagem. Sem a câmera (falhou), o print como antes
-          return tira().then(function (saiu) {
+          // quadros lentos): a foto sai aqui, no fim da contagem
+          return (comCamera ? tira() : Promise.resolve(false)).then(function (saiu) {
             if (!alive()) return
-            if (arMsg) arMsg.textContent = saiu ? '' : PRINT_RA
-            return wait(7000)
+            if (saiu) {
+              faseRA('pronta')
+              if (fotoArRot) fotoArRot.textContent = 'Tirar outra'
+              return doisQuadrosRA().then(function () {
+                return true
+              })
+            }
+            // sem a câmera (recusada, sem suporte ou a captura falhou): o print, com os botões (e o X da RA) fora da frente.
+            // 14/10 (verificação): o pedido fica 1,5 s e sai também (ele já veio na contagem) — antes ficava os 6 s e saía
+            // no próprio print da pessoa
+            faseRA('print')
+            dicaRA(PRINT_RA)
+            setTimeout(function () {
+              if (run === arRun && aruiBox && aruiBox.getAttribute('data-fase') === 'print') dicaRA('')
+            }, 1500)
+            return wait(6000).then(function () {
+              if (!alive()) return
+              faseRA('')
+              dicaRA('')
+              return true
+            })
           })
         })
-        .then(function () {
-          botoesFoto(false)
-          if (!alive()) return
+        .then(function (segue) {
+          if (!segue || !alive()) return
+          // 14/10: “Ficou demais! Obrigada!” também na RA — da pose para o “ficou” com 450 ms (como no modo foto: com a
+          // mistura curta os braços iam da pose ao “ficou” em 160 ms) e, no fim dele, de volta ao idle com 700 ms
+          // (setLoop chamado DURANTE a fala: só marca o laço seguinte)
+          mainPlayer.nextFade = 450
+          var pf = speak('ficou', mainPlayer)
           api.setLoop(null, 700)
-          if (arMsg) arMsg.textContent = ''
+          return pf
         })
+        .then(function () {
+          if (run !== arRun) return
+          botoesFoto(false)
+          if (aruiBox && aruiBox.getAttribute('data-fase') !== 'pronta') faseRA('')
+          dicaRA('')
+        })
+    }
+    // a RA aberta pelo “Tirar uma foto com a VIDA”: um respiro para a pessoa ver a VIDA no chão antes de ela chamar
+    function fotoNaEntrada() {
+      if (!fotoAoEntrar) return
+      fotoAoEntrar = false
+      var run = arRun
+      setTimeout(function () {
+        if (run !== arRun || !api.inAR()) return
+        fotoNaRA()
+      }, 700)
     }
     if (fotoAr) {
       fotoAr.addEventListener('click', function (e) {
         e.stopPropagation()
-        fotoNaRA(fra.comCamera())
+        fotoNaRA()
       })
     }
-    // 📸 (13/10, retorno do dono: “tinha que ter um botão que já tirava a foto e ia direto para a galeria”)
-    if (fotoJa) {
-      fotoJa.addEventListener('click', function (e) {
-        e.stopPropagation()
-        prime()
-        // ?camacc=1 com a câmera na sessão: a mesma sequência, e a foto sai no Xis sem sair da RA
-        if (fra.temCamera() === true) return fotoNaRA(true)
-        // padrão: encerra a RA (o ARCore solta a câmera) e abre “A VIDA no seu mundo” já com a sequência — lá a foto sai
-        // no Xis e baixa sozinha (Galeria, pasta Download)
-        stop()
-        // 13/10 (verificação r2): o palco volta ao laço SEM mistura. Antes ficava preso na fala: com o mundo cobrindo a
-        // página em 400 ms, o palco não desenhava nenhum quadro, o “fala-ola” ficava com peso 1 parado em 1,05 s por 25 s,
-        // voltava MUDO na página e, na RA seguinte, o “Olá” recomeçava o mesmo clipe do 0 (mão 124–126° num quadro)
-        cancelAR(true)
-        api.toLoopJa()
-        botoesFoto(true)
-        if (arMsg) arMsg.textContent = 'Abrindo a câmera de fotos…'
-        fra.irParaMundo(mundo).then(function () {
-          botoesFoto(false)
-          if (arMsg) arMsg.textContent = ''
+    // 14/10: Android com a RA de verdade (WebXR): “Tirar uma foto com a VIDA” da página abre a RA e já começa a sequência
+    // (a tela “A VIDA no seu mundo”, por giroscópio, fica só para quem não tem WebXR — iPhone e Android sem ARCore)
+    // (só no Android: num óculos de RA/RV ou no computador, “Tirar uma foto com a VIDA” segue como antes)
+    var xrAR = null
+    if (/Android/i.test(navigator.userAgent) && !temQuickLook() && !ehIOS() && navigator.xr && typeof navigator.xr.isSessionSupported === 'function') {
+      try {
+        navigator.xr.isSessionSupported('immersive-ar').then(function (ok) {
+          xrAR = !!ok
+        }, function () {
+          xrAR = false
         })
-      })
+      } catch (e) {
+        xrAR = false
+      }
+    } else xrAR = false
+    // o modo de RA que o model-viewer escolheu (símbolo “arMode”: webxr, scene-viewer, quick-look ou none enquanto confere)
+    function modoRA() {
+      var syms = Object.getOwnPropertySymbols(mv)
+      for (var i = 0; i < syms.length; i++) if (syms[i].description === 'arMode') return mv[syms[i]]
+      return null
+    }
+    function abrirRAComFoto() {
+      if (xrAR === false || typeof mv.activateAR !== 'function') return false
+      if (document.body.getAttribute('data-model') === 'error') return false
+      // 14/10 (verificação): toque duplo — a RA já está abrindo (por este botão ou pelo “Ver no meu espaço”): o 2º toque
+      // não pede outra sessão (o navegador a recusaria e o model-viewer derrubaria a 1ª) e não abre a outra tela
+      if (raOcupada(mv)) {
+        if (raAbrindo(mv)) say('Abrindo a realidade aumentada…')
+        return true
+      }
+      var modo = modoRA()
+      if (modo == null) modo = xrAR && mv.canActivateAR ? 'webxr' : 'none'
+      // o Scene Viewer (WebXR sem o que o model-viewer precisa) não roda a página: a foto fica na tela “A VIDA no seu mundo”
+      if (modo !== 'webxr' && modo !== 'none') return false
+      if (modo !== 'webxr' || !mv.canActivateAR) {
+        if (xrAR === false) return false
+        // a RA ainda está sendo conferida (toque logo depois de a página abrir): não cai na outra tela
+        say('Preparando a realidade aumentada. Toque de novo em instantes.')
+        return true
+      }
+      if (speaking) {
+        stop()
+        api.toLoop()
+      }
+      prime()
+      fotoAoEntrar = true
+      // dentro do toque: o navegador exige o gesto para abrir a câmera (abrirRA: um pedido de sessão por vez)
+      var p = abrirRA(mv)
+      if (p && p.catch) {
+        p.catch(function () {
+          fotoAoEntrar = false
+        })
+      }
+      return true
     }
 
     function wait(ms) {
@@ -1528,12 +1854,38 @@
     }
 
     mundo = setupFoto(mv, cfg, speak, prime, stop, wait)
+    // 14/10: no Android com WebXR, “Tirar uma foto com a VIDA” vai para a RA de verdade (abrirRAComFoto), não para esta tela
+    if (mundo) mundo.desvio = abrirRAComFoto
     // iPhone/iPad (13/10): não existe WebXR (nem no Safari 26/27) e, no AR Quick Look, a página não roda nada — a voz de
     // lá falha de forma intermitente e o arquivo não escolhe a sessão de áudio. Os botões de RA abrem a RA da própria
     // página (“A VIDA no seu mundo”, com a voz pelo <audio> liberado no toque); o Quick Look fica no chip “Ver na RA da
     // Apple (chão de verdade)”. Também no iPhone sem o Quick Look (navegador dentro de app): lá a página ainda pode ter
     // câmera e voz
-    if (mundo && (temQuickLook() || ehIOS())) {
+    // 15/10 (dono, depois de testar: “não trava no chão, escala péssima” — a RA por giroscópio e o SLAM no navegador não
+    // seguram o chão de um iPhone real): no iPhone/iPad COM Quick Look, os botões de RA e de foto abrem a RA da própria
+    // Apple (ARKit: chão de verdade e tamanho certo) — vida.usdz com a linha do tempo contínua e a marca “Fique aqui”
+    // (scripts/usdz-fique-aqui.py). A tela “A VIDA no seu mundo” fica só para o iPhone SEM Quick Look (navegador dentro
+    // de app), onde ainda dá câmera e voz.
+    if (temQuickLook()) {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-ql-texto]'), function (el) {
+        el.innerHTML = el.getAttribute('data-ql-texto')
+      })
+      Array.prototype.forEach.call(document.querySelectorAll('.ra-ql'), function (el) {
+        el.setAttribute('data-ql-redundante', '')
+      })
+      // “Tirar uma foto com a VIDA” também abre a RA da Apple (lá: toque nela → sequência da foto; o botão branco salva)
+      document.addEventListener('click', function (e) {
+        var b = e.target && e.target.closest && e.target.closest('[data-foto-open]')
+        if (!b) return
+        e.stopPropagation()
+        e.preventDefault()
+        if (speaking) stop()
+        try {
+          abrirRA(mv)
+        } catch (er) {}
+      }, true)
+    }
+    if (mundo && ehIOS() && !temQuickLook()) {
       api.onMundo(function (e) {
         mundo.abrir({}, e)
         return true
@@ -1571,22 +1923,21 @@
     })
   }
 
-  // ------------------------------------------------------------------ foto na RA do Android (WebXR) (13/10/2026)
-  // O 📸 de dentro da RA. Por PADRÃO a câmera não chega à página na RA (WebXR): o 📸 encerra a sessão, espera o
-  // 'not-presenting' + 400 ms (o ARCore solta a câmera) e abre “A VIDA no seu mundo” já disparando a sequência (vem →
-  // 3-2-1 → Xis), que baixa a foto sozinha (Galeria, pasta Download).
-  // ?camacc=1 (EXPERIMENTO, para o teste do dono): pede 'camera-access' como OPCIONAL na sessão que o model-viewer abre
-  // (ele mesmo pede só hit-test, dom-overlay e light-estimation; opcional = sem suporte ou negada, a sessão abre igual) e a
-  // foto sai SEM SAIR da RA: no Xis, a imagem da câmera em tela cheia e, por cima, a cena da VIDA com a câmera XR daquele
+  // ------------------------------------------------------------------ foto na RA do Android (WebXR) (13/10 e 14/10/2026)
+  // A foto tirada DENTRO da RA. 14/10 (retorno do dono: “tudo na mesma aba”): 'camera-access' é pedido POR PADRÃO, como
+  // OPCIONAL, na sessão que o model-viewer abre (ele mesmo pede só hit-test, dom-overlay e light-estimation; opcional = sem
+  // suporte ou negada, a sessão abre igual); ?camacc=0 desliga. Até 13/10 era só com ?camacc=1 e o 📸 saía da RA para a
+  // tela “A VIDA no seu mundo” — esse caminho não existe mais no Android.
+  // A foto sai SEM SAIR da RA: no Xis, a imagem da câmera em tela cheia e, por cima, a cena da VIDA com a câmera XR daquele
   // quadro, desenhadas no canvas do próprio model-viewer (o framebuffer padrão, que na RA não aparece) e copiadas ainda
   // dentro do quadro (a textura da câmera só vale no callback). A especificação garante a imagem alinhada à vista (mesma
   // pose e frustum: https://immersive-web.github.io/raw-camera-access/), com origem no canto inferior esquerdo (amostra
   // camera-access-barebones.html do Chromium); ?fotoflip=1 inverte na vertical, caso um aparelho real mostre o contrário.
-  // DESLIGADO por padrão: um Galaxy S25 travou a GPU só por pedir o recurso
-  // (https://github.com/needle-tools/needle-engine-support/discussions/220); com ele o three busca a imagem da câmera a cada
-  // quadro (pode piorar a flicada); e não há aparelho ARCore para provar. Auto-cura: se a página voltar com uma sessão com
-  // câmera que não terminou limpa (caiu) ou se o contexto WebGL se perder com ela, não pede mais por 7 dias neste aparelho
-  // (limpar os dados do site libera antes).
+  // Riscos de ligar por padrão (por isso a auto-cura): um Galaxy S25 travou a GPU só por pedir o recurso
+  // (https://github.com/needle-tools/needle-engine-support/discussions/220) e, com ele, o three busca a imagem da câmera a
+  // cada quadro. Auto-cura: se a página voltar com uma sessão com câmera que não terminou limpa (caiu) ou se o contexto
+  // WebGL se perder com ela, não pede mais por 7 dias neste aparelho (limpar os dados do site libera antes) — a foto vira o
+  // print, sempre dentro da RA. E, se a sessão não abrir COM o recurso, ela é pedida de novo sem ele.
   // Protótipo: captures/estudo_iphone/foto_android_webxr/proto/foto-ra-webxr.js; teste: scripts/ra-foto-ra.mjs (Edge +
   // scripts/lib/mock-webxr.js, a RA do celular simulada para o model-viewer).
   function lsFotoRA(k, v) {
@@ -1609,15 +1960,15 @@
     // às linhas de “var” lá de baixo — com elas fora, as chaves ainda eram undefined e a auto-cura não via a queda
     var FOTO_RA_OFF = 'vida_ra_camera_off'
     var FOTO_RA_USO = 'vida_ra_camera_em_uso'
-    var FOTO_RA_RESPIRO_MS = 400
     var est = { injetou: false, motivo: '', pedidos: [], medidas: [], erros: [] }
+    var camOff = /[?&]camacc=0(&|$)/.test(location.search)
     var flipV = /[?&]fotoflip=1(&|$)/.test(location.search)
     // auto-cura: a sessão com câmera que estava aberta quando a página saiu sem 'pagehide' (caiu) desliga o pedido
     var uso = Number(lsFotoRA(FOTO_RA_USO) || 0)
     if (uso && Date.now() - uso < 10 * 60 * 1000) lsFotoRA(FOTO_RA_OFF, String(Date.now()))
     lsFotoRA(FOTO_RA_USO, null)
     function motivoSemCamera() {
-      if (!/[?&]camacc=1(&|$)/.test(location.search)) return 'desligado'
+      if (camOff) return 'desligado'
       var off = Number(lsFotoRA(FOTO_RA_OFF) || 0)
       if (off && Date.now() - off < 7 * 864e5) return 'falhou-antes'
       return ''
@@ -1647,7 +1998,7 @@
       return s.enabledFeatures.indexOf('camera-access') >= 0
     }
 
-    // ?camacc=1: o pedido do recurso. Sem o parâmetro, o requestSession do navegador nem é tocado
+    // o pedido do recurso (14/10: por padrão). Com ?camacc=0, o requestSession do navegador nem é tocado
     function vigia(s) {
       if (!s || temCameraNaSessao(s) === false) return
       lsFotoRA(FOTO_RA_USO, String(Date.now()))
@@ -1669,10 +2020,12 @@
       window.addEventListener('pagehide', limpa)
     }
     var xr = navigator.xr
-    if (/[?&]camacc=1(&|$)/.test(location.search) && xr && typeof xr.requestSession === 'function' && !xr.__fotoRA) {
+    if (!camOff && xr && typeof xr.requestSession === 'function' && !xr.__fotoRA) {
       var orig = xr.requestSession
       xr.requestSession = function (modo, init) {
+        var self = this
         var motivo = modo === 'immersive-ar' ? motivoSemCamera() : 'nao-ar'
+        var init0 = init
         if (!motivo) {
           init = Object.assign({}, init || {})
           var opt = (init.optionalFeatures || []).slice()
@@ -1684,8 +2037,27 @@
         est.motivo = motivo
         est.pedidos.push({ modo: modo, optional: ((init && init.optionalFeatures) || []).slice(), bloqueio: motivo })
         var p = orig.call(this, modo, init)
-        if (p && p.then && !motivo) p.then(vigia, function () {})
-        return p
+        if (!p || !p.then || motivo) return p
+        return p.then(
+          function (s) {
+            vigia(s)
+            return s
+          },
+          function (err) {
+            // 14/10 (verificação): recusa que não tem a ver com a câmera — outra sessão aberta ou pendente
+            // (InvalidStateError) ou sem o toque (SecurityError): pedir de novo sem o recurso só repetiria a recusa, e
+            // marcaria a sessão que está abrindo como “sem câmera” (a foto dela viraria o print)
+            var nome = err && err.name
+            if (nome === 'InvalidStateError' || nome === 'SecurityError') throw err
+            // a sessão não abriu COM o recurso opcional (um navegador que recusa em vez de ignorar): de novo, sem ele — a
+            // RA abre igual e a foto vira o print
+            est.erros.push('requestSession com camera-access: ' + ((err && err.name) || err))
+            est.injetou = false
+            est.motivo = 'recusou-a-sessao'
+            est.pedidos.push({ modo: modo, optional: ((init0 && init0.optionalFeatures) || []).slice(), bloqueio: 'recusou-a-sessao' })
+            return orig.call(self, modo, init0)
+          }
+        )
       }
       xr.__fotoRA = true
     }
@@ -1857,8 +2229,8 @@
         })
       })
     }
-    // download direto: pasta Download do Android (a Galeria mostra). Cada foto nasce de um toque (📸 ou “Foto com a
-    // VIDA”), que reabre o limite de downloads automáticos do Chrome
+    // download direto: pasta Download do Android (a Galeria mostra). Cada foto nasce de um toque (“Tirar a foto” na RA ou
+    // “Tirar uma foto com a VIDA” na página), que reabre o limite de downloads automáticos do Chrome
     function salvar(blob) {
       var url = URL.createObjectURL(blob)
       var a = document.createElement('a')
@@ -1873,54 +2245,284 @@
       }, 60000)
       return a.download
     }
-    // padrão: sai da RA e abre “A VIDA no seu mundo” já com a sequência da foto
-    function irParaMundo(mundo) {
-      return new Promise(function (resolve) {
-        var feito = false
-        var reserva = 0
-        function abre() {
-          if (feito) return
-          feito = true
-          clearTimeout(reserva)
-          mv.removeEventListener('ar-status', aoMudar)
-          // a câmera acabou de ser solta pelo ARCore: um respiro antes do getUserMedia do mundo
-          setTimeout(function () {
-            if (mundo) mundo.abrir({ direto: true, foto: true })
-            resolve(!!mundo)
-          }, FOTO_RA_RESPIRO_MS)
-        }
-        function aoMudar(e) {
-          if (e.detail && e.detail.status === 'not-presenting') abre()
-        }
-        mv.addEventListener('ar-status', aoMudar)
-        // garantia: sem o 'not-presenting' em 3 s, abre assim mesmo
-        reserva = setTimeout(abre, 3000)
-        var s = sessaoDe()
-        if (!s) return abre()
-        try {
-          var p = s.end()
-          if (p && p.catch) p.catch(function () {})
-        } catch (e) {
-          abre()
-        }
-      })
+    // 14/10: encerra a RA (o “Compartilhar” que não abre por cima dela leva a foto para a página)
+    function sair() {
+      var s = sessaoDe()
+      if (!s) return
+      try {
+        var p = s.end()
+        if (p && p.catch) p.catch(function () {})
+      } catch (e) {}
     }
     return {
       estado: est,
+      interno: interno,
       temCamera: function () {
         return temCameraNaSessao(sessaoDe())
       },
       naRA: function () {
         return !!sessaoDe()
       },
-      // a sequência da RA tira a foto no Xis: ?camacc=1 pedido nesta sessão e a câmera não recusada
+      // a sequência da RA tira a foto no Xis: o recurso pedido nesta sessão e a câmera não recusada
       comCamera: function () {
         var s = sessaoDe()
         return est.injetou && !!s && temCameraNaSessao(s) !== false
       },
       capturar: capturar,
       salvar: salvar,
-      irParaMundo: irParaMundo,
+      sair: sair,
+    }
+  }
+
+  // ------------------------------------------------------------------ “Fique aqui” no CHÃO da RA (14/10/2026)
+  // Retorno do dono (14/10): o tracejado “Fique aqui” do modo foto ficou “muito bom — aplique nos dois”. Na RA de verdade
+  // (WebXR) ele vira 3D, deitado no chão real e PRESO À VIDA: um quadro no chão (anel tracejado de 52 cm, duas pegadas e
+  // “Fique aqui”), filho do alvo da cena do model-viewer — anda e gira com ela. Nasce à direita dela na tela no instante em
+  // que a sequência da foto começa (o lado direito da câmera, no chão), com o centro a MARCA_LADO_M do centro dos pés dela
+  // e o texto virado para quem segura o celular. As classes do three vêm de objetos do próprio model-viewer (a página não
+  // importa o three): Mesh, PlaneGeometry e MeshBasicMaterial do chão da sombra de contato; Texture, Vector3, Matrix4 e
+  // Object3D da cena da VIDA. Fica FORA da sombra de contato (o model-viewer desenha a sombra com a cena INTEIRA vista de
+  // baixo: a marca sairia como uma mancha escura no chão) e FORA da foto (some no Xis, um quadro antes do disparo).
+  // Teste: scripts/ra-foto-ra.mjs (a marca na tela do simulador, ao lado dela, no “vem” e na contagem; fora depois).
+  var MARCA_LADO_M = 0.55
+  var MARCA_R_M = 0.26
+  var MARCA_TAM_M = 1
+  function criarMarcaLado(mv, interno) {
+    var est = { criada: false, visivel: false, erro: '', centro: null, pes: null }
+    var g = null
+    var mat = null
+    var V3 = null
+    var M4 = null
+    var alvo = 0
+    var t0 = 0
+    function pegada(c, x, y, px, espelho) {
+      c.save()
+      c.translate(x, y)
+      if (espelho) c.scale(-1, 1)
+      c.fillStyle = 'rgba(243,240,231,0.88)'
+      c.strokeStyle = 'rgba(9,15,13,0.6)'
+      c.lineWidth = 0.008 * px
+      // calcanhar (longe da câmera)
+      c.beginPath()
+      c.ellipse(0, -0.07 * px, 0.032 * px, 0.042 * px, 0, 0, 2 * Math.PI)
+      c.fill()
+      c.stroke()
+      // planta e dedos (perto da câmera), um pouco para fora
+      c.beginPath()
+      c.ellipse(-0.006 * px, 0.04 * px, 0.04 * px, 0.062 * px, 0.12, 0, 2 * Math.PI)
+      c.fill()
+      c.stroke()
+      c.restore()
+    }
+    // o quadro do chão (1 m × 1 m, 1 px ≈ 1 mm): o alto do quadro fica longe da câmera, o pé dele perto
+    function texturaCanvas() {
+      var N = 1024
+      var px = N / MARCA_TAM_M
+      var cv = document.createElement('canvas')
+      cv.width = N
+      cv.height = N
+      var c = cv.getContext('2d')
+      var cx = N / 2
+      var cy = N * 0.4
+      var r = MARCA_R_M * px
+      // fundo leve dentro do anel: contraste em chão claro
+      c.fillStyle = 'rgba(9,15,13,0.30)'
+      c.beginPath()
+      c.arc(cx, cy, r, 0, 2 * Math.PI)
+      c.fill()
+      // anel tracejado: contorno escuro por baixo e creme por cima (como o tracejado do modo foto, 13/10 r1)
+      var passo = (2 * Math.PI * r) / 20
+      c.lineCap = 'round'
+      c.setLineDash([passo * 0.55, passo * 0.45])
+      c.strokeStyle = 'rgba(9,15,13,0.72)'
+      c.lineWidth = 0.05 * px
+      c.beginPath()
+      c.arc(cx, cy, r, 0, 2 * Math.PI)
+      c.stroke()
+      c.strokeStyle = '#f3f0e7'
+      c.lineWidth = 0.03 * px
+      c.beginPath()
+      c.arc(cx, cy, r, 0, 2 * Math.PI)
+      c.stroke()
+      c.setLineDash([])
+      // duas pegadas, de frente para a câmera
+      pegada(c, cx - 0.075 * px, cy + 0.005 * px, px, false)
+      pegada(c, cx + 0.075 * px, cy + 0.005 * px, px, true)
+      // “Fique aqui”, entre o anel e a câmera
+      c.font = '700 ' + Math.round(0.115 * px) + 'px "Inter Tight", system-ui, sans-serif'
+      c.textAlign = 'center'
+      c.textBaseline = 'middle'
+      c.lineJoin = 'round'
+      var ty = cy + r + 0.12 * px
+      c.strokeStyle = 'rgba(9,15,13,0.8)'
+      c.lineWidth = 0.024 * px
+      c.strokeText('Fique aqui', cx, ty)
+      c.fillStyle = '#f3f0e7'
+      c.fillText('Fique aqui', cx, ty)
+      return cv
+    }
+    // aparece em 350 ms e “respira” de leve (chama o olhar); some em 350 ms (ou na hora: esconder(true))
+    function anima() {
+      if (!mat) return
+      var agora = performance.now()
+      var k = Math.min(1, (agora - t0) / 350)
+      var o = alvo ? k : 1 - k
+      if (alvo && k >= 1) o = 0.86 + 0.14 * Math.cos(((agora - t0 - 350) / 1600) * 2 * Math.PI)
+      mat.opacity = o
+      if (!alvo && k >= 1 && g) g.visible = false
+    }
+    function cria(sc) {
+      if (g) return
+      var sh = sc.shadow
+      var chao = sh && sh.floor
+      if (!chao || !chao.isMesh || !chao.geometry || !chao.material || !chao.material.isMeshBasicMaterial) throw new Error('sem-classes')
+      var Tex = null
+      sc.target.traverse(function (o) {
+        if (Tex || !o.isMesh || !o.material) return
+        var ms = Array.isArray(o.material) ? o.material : [o.material]
+        for (var i = 0; i < ms.length && !Tex; i++) {
+          var t = ms[i] && ms[i].map
+          if (t && t.isTexture && !t.isDataTexture && !t.isCompressedTexture && !t.isVideoTexture && !t.isRenderTargetTexture && !t.isDepthTexture) Tex = t.constructor
+        }
+      })
+      if (!Tex) throw new Error('sem-textura')
+      V3 = sc.target.position.constructor
+      M4 = sc.target.matrixWorld.constructor
+      var tex = new Tex(texturaCanvas())
+      tex.colorSpace = 'srgb'
+      tex.anisotropy = 8
+      tex.needsUpdate = true
+      mat = new chao.material.constructor({ map: tex, transparent: true, depthWrite: false, side: 2, opacity: 0 })
+      mat.toneMapped = false
+      var mesh = new chao.constructor(new chao.geometry.constructor(MARCA_TAM_M, MARCA_TAM_M), mat)
+      // deitado no chão; o anel (a 40 % do alto do quadro) no centro do grupo, o texto mais perto da câmera
+      mesh.rotation.x = -Math.PI / 2
+      mesh.position.z = MARCA_TAM_M * 0.1
+      mesh.renderOrder = 2
+      mesh.userData.noHit = true
+      mesh.onBeforeRender = anima
+      g = new sc.target.constructor()
+      g.name = 'vida-marca-lado'
+      g.visible = false
+      g.userData.noHit = true
+      g.add(mesh)
+      sc.target.add(g)
+      // fora da sombra de contato
+      var rs = sc.renderShadow
+      if (typeof rs === 'function' && !sc.__semMarca) {
+        sc.renderShadow = function () {
+          var v = g.visible
+          g.visible = false
+          try {
+            return rs.apply(this, arguments)
+          } finally {
+            g.visible = v
+          }
+        }
+        sc.__semMarca = true
+      }
+      est.criada = true
+    }
+    // a câmera de agora: a da RA (a vista do celular) ou, fora dela, a do model-viewer
+    function camera() {
+      var it = interno()
+      var xrm = it && it.three && it.three.xr
+      if (xrm && xrm.isPresenting) {
+        var cx = xrm.getCamera()
+        return cx && cx.cameras && cx.cameras.length ? cx.cameras[0] : cx
+      }
+      var sc = cenaDe(mv)
+      return sc ? sc.getCamera() : null
+    }
+    function posiciona(sc) {
+      var cam = camera()
+      if (!cam) throw new Error('sem-camera')
+      sc.target.updateWorldMatrix(true, false)
+      var tm = sc.target.matrixWorld
+      var bb = sc.boundingBox
+      var cheia = bb && !bb.isEmpty()
+      var yl = cheia ? bb.min.y : 0
+      var pes = new V3(cheia ? (bb.min.x + bb.max.x) / 2 : 0, yl, cheia ? (bb.min.z + bb.max.z) / 2 : 0).applyMatrix4(tm)
+      var cm = cam.matrixWorld.elements
+      // o lado direito da câmera, no chão
+      var dir = new V3(cm[0], 0, cm[2])
+      if (dir.lengthSq() < 1e-8) dir.set(1, 0, 0)
+      dir.normalize()
+      var p = pes.clone().addScaledVector(dir, MARCA_LADO_M)
+      var olha = new V3(cm[12] - p.x, 0, cm[14] - p.z)
+      var inv = new M4().copy(tm).invert()
+      var pl = p.clone().applyMatrix4(inv)
+      var dl = olha.lengthSq() > 1e-8 ? olha.normalize().transformDirection(inv) : new V3(0, 0, 1)
+      var esc = new V3()
+      sc.target.getWorldScale(esc)
+      g.position.set(pl.x, yl + 0.004 / (esc.y || 1), pl.z)
+      g.rotation.set(0, Math.atan2(dl.x, dl.z), 0)
+      g.scale.setScalar(1 / (esc.x || 1))
+      g.updateMatrixWorld(true)
+      est.centro = [p.x, pes.y, p.z]
+      est.pes = [pes.x, pes.y, pes.z]
+    }
+    // onde a marca (e os pés dela) caem na tela agora, em px da página; naTela = o centro do anel à vista
+    function projetar() {
+      if (!g || !est.centro || !V3) return null
+      var cam = camera()
+      if (!cam) return null
+      function p(a) {
+        var v = new V3(a[0], a[1], a[2]).applyMatrix4(cam.matrixWorldInverse)
+        var frente = v.z < 0
+        v.applyMatrix4(cam.projectionMatrix)
+        return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight, frente: frente }
+      }
+      var c = p(est.centro)
+      var m = 0.04
+      return { centro: c, pes: p(est.pes), naTela: c.frente && c.x > innerWidth * m && c.x < innerWidth * (1 - m) && c.y > innerHeight * m && c.y < innerHeight * (1 - m) }
+    }
+    return {
+      estado: est,
+      // 14/10 (verificação): a marca nasce ANTES de ser pedida (quando a RA abre). Criada no toque em “Tirar a foto”, a
+      // textura de 1024² e os 2 shaders dela faziam um quadro de ~48 ms bem no começo do “vem”. Aqui ela é desenhada UM
+      // quadro com opacidade 0 (sobe a textura e compila os shaders) e se esconde sozinha (anima: alvo 0 → invisível)
+      preparar: function () {
+        try {
+          var sc = cenaDe(mv)
+          if (!sc || !sc.target || g) return
+          cria(sc)
+          if (est.visivel) return
+          alvo = 0
+          t0 = performance.now() - 1000
+          if (mat) mat.opacity = 0
+          g.visible = true
+          est.preparada = true
+        } catch (e) {
+          est.erroPreparar = String((e && e.message) || e)
+        }
+      },
+      mostrar: function () {
+        try {
+          var sc = cenaDe(mv)
+          if (!sc || !sc.target) throw new Error('sem-cena')
+          cria(sc)
+          posiciona(sc)
+          alvo = 1
+          t0 = performance.now()
+          if (mat) mat.opacity = 0
+          g.visible = true
+          est.visivel = true
+          est.erro = ''
+        } catch (e) {
+          est.erro = String((e && e.message) || e)
+        }
+      },
+      esconder: function (ja) {
+        est.visivel = false
+        if (!g) return
+        alvo = 0
+        if (ja) {
+          g.visible = false
+          if (mat) mat.opacity = 0
+        } else t0 = performance.now()
+      },
+      projetar: projetar,
     }
   }
 
@@ -3235,7 +3837,11 @@
     }
 
     Array.prototype.forEach.call(openers, function (b) {
-      b.addEventListener('click', open)
+      b.addEventListener('click', function (e) {
+        // 14/10: no Android com a RA de verdade (WebXR) a foto é tirada LÁ (setupFala: abrirRAComFoto) — esta tela não abre
+        if (api.desvio && api.desvio(e)) return
+        open(e)
+      })
     })
     q('[data-foto-comecar]').addEventListener('click', function () {
       comecar()
